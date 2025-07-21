@@ -9,6 +9,14 @@ distribution-version = "2201.12.7"
 
 [[package]]
 org = "ballerina"
+name = "cloud"
+version = "3.3.2"
+modules = [
+	{org = "ballerina", packageName = "cloud", moduleName = "cloud"}
+]
+
+[[package]]
+org = "ballerina"
 name = "io"
 version = "1.8.0"
 dependencies = [
@@ -57,6 +65,7 @@ org = "tharindu"
 name = "bike_service"
 version = "0.1.0"
 dependencies = [
+	{org = "ballerina", name = "cloud"},
 	{org = "ballerina", name = "io"},
 	{org = "ballerinai", name = "observe"}
 ]
