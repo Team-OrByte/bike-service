@@ -23,6 +23,7 @@ services:
       - '8090:8090'
     volumes:
       - ./Config.toml:/app/Config.toml
+      - ./logs:/app/logs
     environment:
       BAL_CONFIG_FILES: /app/Config.toml
 

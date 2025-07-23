@@ -12,3 +12,10 @@ cloud="docker"
 groupId = "org.postgresql"
 artifactId = "postgresql"
 version = "42.2.20"
+
+[ballerina.observe]
+metricsEnabled = false
+tracingEnabled = false
+logsEnabled = true
+logLevel = "DEBUG"
+logFilePath = "./logs/bike-service.log"

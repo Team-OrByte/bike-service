@@ -1,6 +1,7 @@
 import ballerina/http;
 import ballerinax/postgresql;
 import ballerina/sql;
+import ballerina/log;
 
 configurable int db_port = ?;
 configurable string db_host = ?;
@@ -16,16 +17,24 @@ postgresql:Client dbClient = check new (username = db_user, password = db_pass, 
 service /bike\-service on new http:Listener(8090) {
 
     resource function get bikes() returns Bike[] {
+
+        log:printInfo("Received request: GET /bikes");
+
         sql:ParameterizedQuery query = `SELECT * FROM bikes`;
-        
+
         stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
 
         Bike[] bikes = [];
 
-        // Consume the stream and build the array
         error? e = result.forEach(function(Bike bike) {
             bikes.push(bike);
         });
+
+        if e is error {
+            log:printError("Error while processing bikes stream", err = e.toString());
+        } else {
+            log:printInfo("Successfully retrieved bikes: " + bikes.length().toString());
+        }
 
         return bikes;
         
