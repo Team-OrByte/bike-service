@@ -16,13 +16,13 @@ services:
       - '5432:5432'
 
   bike-service:
-    image: tharindu/bike_service:latest
+    image: bike_service:latest
     depends_on:
       - bike_service_db
     ports:
       - '8090:8090'
     environment:
-      DB_HOST: postgres
+      DB_HOST: bike_service_db
       DB_PORT: 5432
       DB_NAME: bikes_db
       DB_USER: bike_service_user
