@@ -7,3 +7,8 @@ distribution = "2201.12.7"
 [build-options]
 observabilityIncluded = true
 cloud="docker"
+
+[[platform.java17.dependency]]
+groupId = "org.postgresql"
+artifactId = "postgresql"
+version = "42.2.20"

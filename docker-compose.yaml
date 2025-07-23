@@ -21,12 +21,10 @@ services:
       - bike_service_db
     ports:
       - '8090:8090'
+    volumes:
+      - ./Config.toml:/app/Config.toml
     environment:
-      DB_HOST: bike_service_db
-      DB_PORT: 5432
-      DB_NAME: bikes_db
-      DB_USER: bike_service_user
-      DB_PASS: 1KiHEb8LC0VmvUe
+      BAL_CONFIG_FILES: /app/Config.toml
 
 volumes:
   pgdata:

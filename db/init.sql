@@ -2,6 +2,22 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+CREATE TABLE IF NOT EXISTS bikes (
+    bike_id UUID PRIMARY KEY,
+    added_by_id UUID NOT NULL,
+    is_active BOOLEAN NOT NULL,
+    is_flagged_for_maintenance BOOLEAN NOT NULL,
+    model_name VARCHAR(100),
+    brand VARCHAR(100),
+    max_speed_kmh INTEGER,
+    range_km INTEGER,
+    weight_kg INTEGER,
+    image_url TEXT,
+    description TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
 INSERT INTO bikes (
     bike_id,
     added_by_id,
@@ -9,7 +25,7 @@ INSERT INTO bikes (
     is_flagged_for_maintenance,
     model_name,
     brand,
-    max_speed,
+    max_speed_kmh,
     range_km,
     weight_kg,
     image_url,
