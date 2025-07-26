@@ -191,4 +191,128 @@ service /bike\-service on new http:Listener(8090) {
         };
         
     }
+
+    resource function delete delete\-bike/[string bikeId]() returns Response {
+
+        log:printInfo("Received request: DELETE /delete-bike/" + bikeId);
+
+        // First check if the bike exists and is currently active
+        sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
+        
+        stream<record {string bike_id; boolean is_active;}, sql:Error?> checkResult = dbClient->query(checkQuery);
+        
+        record {string bike_id; boolean is_active;}[] existingBikes = [];
+        error? checkError = checkResult.forEach(function(record {string bike_id; boolean is_active;} bike) {
+            existingBikes.push(bike);
+        });
+
+        if checkError is error {
+            log:printError("Error while checking bike existence", err = checkError.toString());
+            return {
+                message: "Failed to check bike existence"
+            };
+        }
+
+        if existingBikes.length() == 0 {
+            log:printWarn("Bike not found with ID: " + bikeId);
+            return {
+                message: "Bike not found"
+            };
+        }
+
+        // Check if bike is already soft deleted
+        if !existingBikes[0].is_active {
+            log:printWarn("Bike is already deleted with ID: " + bikeId);
+            return {
+                message: "Bike is already deleted"
+            };
+        }
+
+        // Get current time for updated_at
+        string currentTime = time:utcToString(time:utcNow());
+
+        // Perform soft delete by setting is_active to false
+        sql:ParameterizedQuery deleteQuery = `UPDATE bikes SET 
+            is_active = false, 
+            updated_at = ${currentTime} 
+            WHERE bike_id = ${bikeId}`;
+
+        var result = dbClient->execute(deleteQuery);
+
+        if result is sql:Error {
+            log:printError("Failed to soft delete bike", err = result.toString());
+            return {
+                message: "Failed to delete bike"
+            };
+        }
+
+        log:printInfo("Bike successfully soft deleted with ID: " + bikeId);
+        return {
+            message: "Bike deleted successfully",
+            data: { id: bikeId }
+        };
+        
+    }
+
+    resource function post restore\-bike/[string bikeId]() returns Response {
+
+        log:printInfo("Received request: POST /restore-bike/" + bikeId);
+
+        // First check if the bike exists and is currently inactive
+        sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
+        
+        stream<record {string bike_id; boolean is_active;}, sql:Error?> checkResult = dbClient->query(checkQuery);
+        
+        record {string bike_id; boolean is_active;}[] existingBikes = [];
+        error? checkError = checkResult.forEach(function(record {string bike_id; boolean is_active;} bike) {
+            existingBikes.push(bike);
+        });
+
+        if checkError is error {
+            log:printError("Error while checking bike existence", err = checkError.toString());
+            return {
+                message: "Failed to check bike existence"
+            };
+        }
+
+        if existingBikes.length() == 0 {
+            log:printWarn("Bike not found with ID: " + bikeId);
+            return {
+                message: "Bike not found"
+            };
+        }
+
+        // Check if bike is already active
+        if existingBikes[0].is_active {
+            log:printWarn("Bike is already active with ID: " + bikeId);
+            return {
+                message: "Bike is already active"
+            };
+        }
+
+        // Get current time for updated_at
+        string currentTime = time:utcToString(time:utcNow());
+
+        // Restore bike by setting is_active to true
+        sql:ParameterizedQuery restoreQuery = `UPDATE bikes SET 
+            is_active = true, 
+            updated_at = ${currentTime} 
+            WHERE bike_id = ${bikeId}`;
+
+        var result = dbClient->execute(restoreQuery);
+
+        if result is sql:Error {
+            log:printError("Failed to restore bike", err = result.toString());
+            return {
+                message: "Failed to restore bike"
+            };
+        }
+
+        log:printInfo("Bike successfully restored with ID: " + bikeId);
+        return {
+            message: "Bike restored successfully",
+            data: { id: bikeId }
+        };
+        
+    }
 }
