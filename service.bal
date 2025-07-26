@@ -48,6 +48,42 @@ service /bike\-service on new http:Listener(8090) {
         
     }
 
+    resource function get bike/[string bikeId]() returns Response {
+
+        log:printInfo("Received request: GET /bike/" + bikeId);
+
+        sql:ParameterizedQuery query = `SELECT * FROM bikes WHERE bike_id = ${bikeId}`;
+
+        stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
+
+        Bike[] bikes = [];
+
+        error? e = result.forEach(function(Bike bike) {
+            bikes.push(bike);
+        });
+
+        if e is error {
+            log:printError("Error while processing bike stream", err = e.toString());
+            return {
+                message: "Failed to retrieve bike details"
+            };
+        }
+
+        if bikes.length() == 0 {
+            log:printWarn("Bike not found with ID: " + bikeId);
+            return {
+                message: "Bike not found"
+            };
+        }
+
+        log:printInfo("Successfully retrieved bike details for ID: " + bikeId);
+        return {
+            message: "Bike details retrieved successfully",
+            data: bikes[0]
+        };
+        
+    }
+
     resource function post create\-bike(@http:Payload BikeInsert bike) returns Response {
 
         string generatedBikeId = uuid:createType1AsString();
@@ -315,4 +351,57 @@ service /bike\-service on new http:Listener(8090) {
         };
         
     }
+
+    resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+
+        log:printInfo("Received request: GET /active-bikes");
+
+        sql:ParameterizedQuery query = `SELECT * FROM bikes WHERE is_active = true ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${pageOffset}`;
+        sql:ParameterizedQuery countQuery = `SELECT COUNT(*) as total FROM bikes WHERE is_active = true`;
+
+        stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
+
+        Bike[] bikes = [];
+
+        error? e = result.forEach(function(Bike bike) {
+            bikes.push(bike);
+        });
+
+        if e is error {
+            log:printError("Error while processing active bikes stream", err = e.toString());
+            return {
+                message: "Failed to retrieve active bikes"
+            };
+        }
+
+        // Get total count for pagination info
+        stream<record {int total;}, sql:Error?> countResult = dbClient->query(countQuery);
+        
+        int totalCount = 0;
+        error? countError = countResult.forEach(function(record {int total;} countRecord) {
+            totalCount = countRecord.total;
+        });
+
+        if countError is error {
+            log:printWarn("Failed to get total count, using bikes array length");
+            totalCount = bikes.length();
+        }
+
+        log:printInfo("Successfully retrieved " + bikes.length().toString() + " active bikes out of " + totalCount.toString() + " total active bikes");
+        
+        return {
+            message: "Active bikes retrieved successfully",
+            data: {
+                bikes: bikes,
+                pagination: {
+                    total: totalCount,
+                    pageSize: pageSize,
+                    offset: pageOffset,
+                    returned: bikes.length()
+                }
+            }
+        };
+       
+    }
+
 }
