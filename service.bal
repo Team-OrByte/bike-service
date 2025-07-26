@@ -14,6 +14,7 @@ configurable string db_name = ?;
 postgresql:Options postgresqlOptions = {
   connectTimeout: 10
 };
+
 postgresql:Client dbClient = check new (username = db_user, password = db_pass, database = db_name,host=db_host,port=db_port, options = postgresqlOptions);
 
 service /bike\-service on new http:Listener(8090) {
