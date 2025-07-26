@@ -74,7 +74,7 @@ service /bike\-service on new http:Listener(8090) {
 
         sql:ParameterizedQuery insertQuery = `INSERT INTO bikes 
             (bike_id, added_by_id, is_active, is_flagged_for_maintenance, 
-            model_name, brand, max_speed, range_km, weight_kg, image_url, 
+            model_name, brand, max_speed_kmh, range_km, weight_kg, image_url, 
             description, created_at, updated_at) 
             VALUES (${newBike.bikeId}, ${newBike.addedById}, ${newBike.isActive}, 
             ${newBike.isFlaggedForMaintenance}, ${newBike.modelName}, ${newBike.brand}, 
@@ -94,6 +94,100 @@ service /bike\-service on new http:Listener(8090) {
         return {
             message: "Bike created successfully",
             data: { id: newBike.bikeId }
+        };
+        
+    }
+
+    resource function put update\-bike/[string bikeId](@http:Payload BikeUpdate bikeUpdate) returns Response {
+
+        log:printInfo("Received request: PUT /update-bike/" + bikeId);
+
+        // First check if the bike exists
+        sql:ParameterizedQuery checkQuery = `SELECT bike_id FROM bikes WHERE bike_id = ${bikeId}`;
+        
+        stream<record {string bike_id;}, sql:Error?> checkResult = dbClient->query(checkQuery);
+        
+        record {string bike_id;}[] existingBikes = [];
+        error? checkError = checkResult.forEach(function(record {string bike_id;} bike) {
+            existingBikes.push(bike);
+        });
+
+        if checkError is error {
+            log:printError("Error while checking bike existence", err = checkError.toString());
+            return {
+                message: "Failed to check bike existence"
+            };
+        }
+
+        if existingBikes.length() == 0 {
+            log:printWarn("Bike not found with ID: " + bikeId);
+            return {
+                message: "Bike not found"
+            };
+        }
+
+        // Get current time for updated_at
+        string currentTime = time:utcToString(time:utcNow());
+
+        // Use individual parameterized queries based on what fields are provided
+        sql:ExecutionResult|sql:Error result;
+        
+        // Selective update - we'll use a simpler approach for now
+        // First get the current bike data
+        sql:ParameterizedQuery getCurrentQuery = `SELECT * FROM bikes WHERE bike_id = ${bikeId}`;
+        stream<Bike, sql:Error?> currentResult = dbClient->query(getCurrentQuery, Bike);
+        
+        Bike? currentBike = ();
+        error? fetchError = currentResult.forEach(function(Bike bike) {
+            currentBike = bike;
+        });
+        
+        if fetchError is error || currentBike is () {
+            log:printError("Failed to fetch current bike data");
+            return {
+                message: "Failed to fetch current bike data"
+            };
+        }
+
+        Bike bike = <Bike>currentBike;
+
+        // Use current values or new values
+        boolean finalIsActive = bikeUpdate.isActive ?: bike.isActive;
+        boolean finalIsFlagged = bikeUpdate.isFlaggedForMaintenance ?: bike.isFlaggedForMaintenance;
+        string finalModelName = bikeUpdate.modelName ?: bike.modelName;
+        string finalBrand = bikeUpdate.brand ?: bike.brand;
+        int finalMaxSpeed = bikeUpdate.maxSpeed ?: bike.maxSpeed;
+        int finalRangeKm = bikeUpdate.rangeKm ?: bike.rangeKm;
+        int finalWeightKg = bikeUpdate.weightKg ?: bike.weightKg;
+        string? finalImageUrl = bikeUpdate.imageUrl ?: bike.imageUrl;
+        string? finalDescription = bikeUpdate.description ?: bike.description;
+
+        sql:ParameterizedQuery updateQuery = `UPDATE bikes SET 
+            is_active = ${finalIsActive}, 
+            is_flagged_for_maintenance = ${finalIsFlagged}, 
+            model_name = ${finalModelName}, 
+            brand = ${finalBrand}, 
+            max_speed_kmh = ${finalMaxSpeed}, 
+            range_km = ${finalRangeKm}, 
+            weight_kg = ${finalWeightKg}, 
+            image_url = ${finalImageUrl}, 
+            description = ${finalDescription}, 
+            updated_at = ${currentTime} 
+            WHERE bike_id = ${bikeId}`;
+        result = dbClient->execute(updateQuery);
+        
+
+        if result is sql:Error {
+            log:printError("Failed to update bike", err = result.toString());
+            return {
+                message: "Failed to update bike"
+            };
+        }
+
+        log:printInfo("Bike successfully updated with ID: " + bikeId);
+        return {
+            message: "Bike updated successfully",
+            data: { id: bikeId }
         };
         
     }
