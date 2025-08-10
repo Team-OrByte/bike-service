@@ -2,38 +2,38 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE IF NOT EXISTS bikes (
-    bikeId TEXT PRIMARY KEY,
-    addedById TEXT NOT NULL,
-    isActive BOOLEAN NOT NULL,
-    isFlaggedForMaintenance BOOLEAN NOT NULL,
-    modelName VARCHAR(100),
-    brand VARCHAR(100),
-    maxSpeed INTEGER,
-    rangeKm INTEGER,
-    weightKg INTEGER,
-    imageUrl TEXT,
-    description TEXT,
-    isReserved BOOLEAN NOT NULL,
-    createdAt TIMESTAMP,
-    updatedAt TIMESTAMP
+CREATE TABLE IF NOT EXISTS bike (
+    "bikeId" TEXT PRIMARY KEY,
+    "addedById" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL,
+    "isFlaggedForMaintenance" BOOLEAN NOT NULL,
+    "modelName" VARCHAR(100),
+    "brand" VARCHAR(100),
+    "maxSpeed" INTEGER,
+    "rangeKm" INTEGER,
+    "weightKg" INTEGER,
+    "imageUrl" TEXT,
+    "description" TEXT,
+    "isReserved" BOOLEAN NOT NULL,
+    "createdAt" TIMESTAMP,
+    "updatedAt" TIMESTAMP
 );
 
-INSERT INTO bikes (
-    bikeId,
-    addedById,
-    isActive,
-    isFlaggedForMaintenance,
-    modelName,
-    brand,
-    maxSpeed,
-    rangeKm,
-    weightKg,
-    imageUrl,
-    description,
-    isReserved,
-    createdAt,
-    updatedAt
+INSERT INTO bike (
+    "bikeId",
+    "addedById",
+    "isActive",
+    "isFlaggedForMaintenance",
+    "modelName",
+    "brand",
+    "maxSpeed",
+    "rangeKm",
+    "weightKg",
+    "imageUrl",
+    "description",
+    "isReserved",
+    "createdAt",
+    "updatedAt"
 ) VALUES
 -- 25 bike records with varied details
 

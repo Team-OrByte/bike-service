@@ -7,6 +7,7 @@ distribution = "2201.12.7"
 [build-options]
 observabilityIncluded = true
 cloud="docker"
+
 [[platform.java17.dependency]]
 groupId = "io.ballerina.stdlib"
 artifactId = "persist.sql-native"
@@ -18,12 +19,6 @@ tracingEnabled = false
 logsEnabled = true
 logLevel = "DEBUG"
 logFilePath = "./logs/bike-service.log"
-
-[[tool.persist]]
-id = "generate-db-client"
-targetModule = "bike_service"
-options.datastore = "postgresql"
-filePath = "persist/model.bal"
 
 [[platform.java21.dependency]]
 groupId = "io.ballerina.stdlib"

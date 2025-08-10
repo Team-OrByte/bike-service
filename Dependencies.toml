@@ -359,9 +359,6 @@ dependencies = [
 	{org = "ballerina", name = "lang.int"},
 	{org = "ballerina", name = "time"}
 ]
-modules = [
-	{org = "ballerina", packageName = "uuid", moduleName = "uuid"}
-]
 
 [[package]]
 org = "ballerinai"
@@ -439,19 +436,13 @@ dependencies = [
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
-	{org = "ballerina", name = "uuid"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "persist.sql"},
 	{org = "ballerinax", name = "postgresql"},
 	{org = "ballerinax", name = "postgresql.driver"}
 ]
 modules = [
-	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service"}
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service"},
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.repository"}
 ]
-
-[[tool]]
-id = "persist"
-org = "ballerina"
-name = "tool_persist"
-version = "0.0.0"
 
