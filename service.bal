@@ -108,72 +108,31 @@ service /bike\-service on new http:Listener(8090) {
         
     }
 
-    // resource function put update\-bike/[string bikeId](@http:Payload BikeUpdate bikeUpdate) returns Response {
+    resource function put update\-bike/[string bikeId](@http:Payload repository:BikeUpdate bikeUpdate) returns Response {
 
-    //     log:printInfo("Received request: PUT /update-bike/" + bikeId);
+        log:printInfo("Received request: PUT /update-bike/" + bikeId);
 
-    //     time:Civil currentTime = time:utcToCivil(time:utcNow());
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
 
-    //     sql:ExecutionResult|sql:Error result;
-        
-    //     sql:ParameterizedQuery getCurrentQuery = `SELECT * FROM bikes WHERE bikeId = ${bikeId}`;
-    //     stream<Bike, sql:Error?> currentResult = dbClient->query(getCurrentQuery, Bike);
-        
-    //     Bike? currentBike = ();
-    //     error? fetchError = currentResult.forEach(function(Bike bike) {
-    //         currentBike = bike;
-    //     });
-        
-    //     if fetchError is error || currentBike is () {
-    //         log:printError("Failed to fetch current bike data");
-    //         return {
-    //             message: "Failed to fetch current bike data"
-    //         };
-    //     }
+        bikeUpdate.updatedAt = currentTime;
 
-    //     Bike bike = <Bike>currentBike;
+        //update necessary fields only
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put(bikeUpdate);
 
-    //     boolean finalIsActive = bikeUpdate.isActive ?: bike.isActive;
-    //     boolean finalIsFlagged = bikeUpdate.isFlaggedForMaintenance ?: bike.isFlaggedForMaintenance;
-    //     string finalModelName = bikeUpdate.modelName ?: bike.modelName;
-    //     string finalBrand = bikeUpdate.brand ?: bike.brand;
-    //     int finalMaxSpeed = bikeUpdate.maxSpeed ?: bike.maxSpeed;
-    //     int finalRangeKm = bikeUpdate.rangeKm ?: bike.rangeKm;
-    //     int finalWeightKg = bikeUpdate.weightKg ?: bike.weightKg;
-    //     string? finalImageUrl = bikeUpdate.imageUrl ?: bike.imageUrl;
-    //     string? finalDescription = bikeUpdate.description ?: bike.description;
-    //     boolean isReserved = bikeUpdate.isReserved ?: bike.isReserved;
-
-    //     sql:ParameterizedQuery updateQuery = `UPDATE bikes SET 
-    //         isActive = ${finalIsActive}, 
-    //         isFlaggedForMaintenance = ${finalIsFlagged}, 
-    //         modelName = ${finalModelName}, 
-    //         brand = ${finalBrand}, 
-    //         maxSpeed = ${finalMaxSpeed}, 
-    //         rangeKm = ${finalRangeKm}, 
-    //         weightKg = ${finalWeightKg}, 
-    //         imageUrl = ${finalImageUrl}, 
-    //         description = ${finalDescription}, 
-    //         updatedAt = ${currentTime},
-    //         isReserved = ${isReserved}, 
-    //         WHERE bikeId = ${bikeId}`;
-    //     result = dbClient->execute(updateQuery);
-        
-
-    //     if result is sql:Error {
-    //         log:printError("Failed to update bike", err = result.toString());
-    //         return {
-    //             message: "Failed to update bike"
-    //         };
-    //     }
-
-    //     log:printInfo("Bike successfully updated with ID: " + bikeId);
-    //     return {
-    //         message: "Bike updated successfully",
-    //         data: { id: bikeId }
-    //     };
-        
-    // }
+        if result is repository:Bike {
+            log:printInfo("Successfully updated bike with ID: " + bikeId);
+            return {
+                message: "Bike updated successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to update bike with ID: " + bikeId);
+            return {
+                message: "Failed to update bike : " + result.toString()
+            };
+        }
+    }
 
     // resource function delete delete\-bike/[string bikeId]() returns Response {
 
