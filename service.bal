@@ -236,10 +236,28 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
-    resource function put reserve\-bike/[string bikeId]() returns Response {
+    resource function put reserve\-bike/[string bikeId]() returns Response|error {
         log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
 
-        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+        //check if the bike is already reserved,under maintenance or deleted
+        BikeStatus|persist:Error availabilityCheck = check sClient->/bikes/[bikeId]();
+
+        if availabilityCheck is BikeStatus {
+            if !availabilityCheck.isActive {
+                log:printError("Failed to reserve bike with ID: " + bikeId);
+                return {
+                    message: "Bike is deleted or under maintenance"
+                };
+            }
+            else if availabilityCheck.isReserved {
+                log:printError("Failed to reserve bike with ID: " + bikeId);
+                return {
+                    message: "Bike is already reserved"
+                };
+            }            
+        }
+
+        repository:Bike|persist:Error result = check sClient->/bikes/[bikeId].put({
             isReserved: true
         });
 
@@ -280,6 +298,38 @@ service /bike\-service on new http:Listener(8090) {
             };
         }
 
+    }
+
+    resource function get unreserved\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+        log:printInfo("Received request: GET /unreserved-bikes");
+
+        sql:ParameterizedQuery whereClause = `"isReserved" = false`;
+        sql:ParameterizedQuery orderByClause = `"createdAt" `;
+        sql:ParameterizedQuery limitClause = `${pageSize} OFFSET ${pageOffset}`;
+
+        stream<repository:BikeOptionalized, persist:Error?> result = sClient->/bikes(
+            <repository:BikeTargetType>repository:BikeOptionalized,
+            whereClause,
+            orderByClause,
+            limitClause
+        );
+
+        repository:BikeOptionalized[] bikeList = [];
+        error? e = result.forEach(function(repository:BikeOptionalized bike) {
+            bikeList.push(bike);
+        });
+       
+        if e is error {
+            log:printError("Error while processing bike stream", err = e.toString());
+            return {
+                message: "Failed to retrieve bike details : " + e.toString()
+            };
+        }
+
+        return {
+            message: "Successfully retrieved bike details",
+            data: bikeList
+        };
     }
 
 }
