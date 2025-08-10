@@ -178,67 +178,29 @@ service /bike\-service on new http:Listener(8090) {
         }
     }
 
-    // resource function post restore\-bike/[string bikeId]() returns Response {
+    resource function put restore\-bike/[string bikeId]() returns Response {
 
-    //     log:printInfo("Received request: POST /restore-bike/" + bikeId);
+        log:printInfo("Received request: POST /restore-bike/" + bikeId);
 
-    //     // First check if the bike exists and is currently inactive
-    //     sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isActive: true
+        });
+
+        if result is repository:Bike {
+            log:printInfo("Successfully restored bike with ID: " + bikeId);
+            return {
+                message: "Bike restored successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to restore bike with ID: " + bikeId);
+            return {
+                message: "Failed to restore bike : " + result.toString()
+            };
+        }
         
-    //     stream<record {string bike_id; boolean is_active;}, sql:Error?> checkResult = dbClient->query(checkQuery);
-        
-    //     record {string bike_id; boolean is_active;}[] existingBikes = [];
-    //     error? checkError = checkResult.forEach(function(record {string bike_id; boolean is_active;} bike) {
-    //         existingBikes.push(bike);
-    //     });
-
-    //     if checkError is error {
-    //         log:printError("Error while checking bike existence", err = checkError.toString());
-    //         return {
-    //             message: "Failed to check bike existence"
-    //         };
-    //     }
-
-    //     if existingBikes.length() == 0 {
-    //         log:printWarn("Bike not found with ID: " + bikeId);
-    //         return {
-    //             message: "Bike not found"
-    //         };
-    //     }
-
-    //     // Check if bike is already active
-    //     if existingBikes[0].is_active {
-    //         log:printWarn("Bike is already active with ID: " + bikeId);
-    //         return {
-    //             message: "Bike is already active"
-    //         };
-    //     }
-
-    //     // Get current time for updated_at
-    //     string currentTime = time:utcToString(time:utcNow());
-
-    //     // Restore bike by setting is_active to true
-    //     sql:ParameterizedQuery restoreQuery = `UPDATE bikes SET 
-    //         is_active = true, 
-    //         updated_at = ${currentTime} 
-    //         WHERE bike_id = ${bikeId}`;
-
-    //     var result = dbClient->execute(restoreQuery);
-
-    //     if result is sql:Error {
-    //         log:printError("Failed to restore bike", err = result.toString());
-    //         return {
-    //             message: "Failed to restore bike"
-    //         };
-    //     }
-
-    //     log:printInfo("Bike successfully restored with ID: " + bikeId);
-    //     return {
-    //         message: "Bike restored successfully",
-    //         data: { id: bikeId }
-    //     };
-        
-    // }
+    }
 
     // resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
 
