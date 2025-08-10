@@ -359,6 +359,9 @@ dependencies = [
 	{org = "ballerina", name = "lang.int"},
 	{org = "ballerina", name = "time"}
 ]
+modules = [
+	{org = "ballerina", packageName = "uuid", moduleName = "uuid"}
+]
 
 [[package]]
 org = "ballerinai"
@@ -436,6 +439,7 @@ dependencies = [
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
+	{org = "ballerina", name = "uuid"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "persist.sql"},
 	{org = "ballerinax", name = "postgresql"},

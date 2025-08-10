@@ -2,6 +2,8 @@ import ballerina/http;
 import ballerina/log;
 import bike_service.repository;
 import ballerina/persist;
+import ballerina/uuid;
+import ballerina/time;
 
 
 final repository:Client sClient = check new();
@@ -33,92 +35,78 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
-    // resource function get bike/[string bikeId]() returns Response {
+    resource function get bike/[string bikeId]() returns Response {
 
-    //     log:printInfo("Received request: GET /bike/" + bikeId);
+        log:printInfo("Received request: GET /bike/" + bikeId);
 
-    //     sql:ParameterizedQuery query = `SELECT * FROM bikes WHERE bikeId = ${bikeId}`;
+        repository:Bike|persist:Error bike = sClient->/bikes/[bikeId]();
 
-    //     stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
-
-    //     Bike[] bikes = [];
-
-    //     error? e = result.forEach(function(Bike bike) {
-    //         bikes.push(bike);
-    //     });
-
-    //     if e is error {
-    //         log:printError("Error while processing bike stream", err = e.toString());
-    //         return {
-    //             message: "Failed to retrieve bike details"
-    //         };
-    //     }
-
-    //     if bikes.length() == 0 {
-    //         log:printWarn("Bike not found with ID: " + bikeId);
-    //         return {
-    //             message: "Bike not found"
-    //         };
-    //     }
-
-    //     log:printInfo("Successfully retrieved bike details for ID: " + bikeId);
-    //     return {
-    //         message: "Bike details retrieved successfully",
-    //         data: bikes[0]
-    //     };
+        if bike is repository:Bike {
+            log:printInfo("Successfully retrieved bike details");
+            return {
+                message: "Bike details retrieved successfully",
+                data: bike
+            };
+        }
+        else {
+            log:printWarn("Bike not found with ID: " + bikeId);
+            return {
+                message: "Bike not found"
+            };
+        }
         
-    // }
+    }
 
-    // resource function post create\-bike(@http:Payload BikeInsert bike) returns Response {
+    resource function post create\-bike(@http:Payload repository:BikeOptionalized bike) returns Response {
 
-    //     string generatedBikeId = uuid:createType1AsString();
+        string generatedBikeId = uuid:createType1AsString();
+        string addedById = "7f34d7a7-c249-44c9-add1-50e79dda8703";
         
-    //     time:Civil currentTime = time:utcToCivil(time:utcNow());
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
+
+        //check all necessary fields are there
+        if bike.modelName is () || bike.brand is () || bike.maxSpeed is () || bike.rangeKm is () || bike.weightKg is () {
+            log:printError("Missing required fields for bike creation");
+            return {
+                message: "Missing required fields for bike creation"
+            };
+        }
         
-    //     Bike newBike = {
-    //         bikeId: generatedBikeId,
-    //         addedById: bike.addedById,
-    //         modelName: bike.modelName,
-    //         brand: bike.brand,
-    //         maxSpeed: bike.maxSpeed,
-    //         rangeKm: bike.rangeKm,
-    //         weightKg: bike.weightKg,
-    //         imageUrl: bike.imageUrl,
-    //         description: bike.description,
-    //         createdAt: currentTime,
-    //         updatedAt: currentTime,
-    //         isActive: true,
-    //         isFlaggedForMaintenance: false,
-    //         isReserved: false
-    //     };
+        repository:Bike newBike = {
+            bikeId: generatedBikeId,
+            addedById: addedById,
+            modelName: <string>bike.modelName,
+            brand: <string>bike.brand,
+            maxSpeed: <int>bike.maxSpeed,
+            rangeKm: <int>bike.rangeKm,
+            weightKg: <int>bike.weightKg,
+            imageUrl: <string>bike.imageUrl,
+            description: <string>bike.description,
+            createdAt: currentTime,
+            updatedAt: currentTime,
+            isActive: true,
+            isFlaggedForMaintenance: false,
+            isReserved: false
+        };
 
-    //     log:printInfo("Received request: POST /create-bike");
+        string[]|persist:Error result = sClient->/bikes.post([newBike]);
 
-    //     sql:ParameterizedQuery insertQuery = `INSERT INTO bikes 
-    //         (bikeId, addedById, isActive, isFlaggedForMaintenance, 
-    //         modelName, brand, maxSpeed, rangeKm, weightKg, imageUrl, 
-    //         description, createdAt, updatedAt) 
-    //         VALUES (${newBike.bikeId}, ${newBike.addedById}, ${newBike.isActive}, 
-    //         ${newBike.isFlaggedForMaintenance}, ${newBike.modelName}, ${newBike.brand}, 
-    //         ${newBike.maxSpeed}, ${newBike.rangeKm}, ${newBike.weightKg}, 
-    //         ${newBike.imageUrl}, ${newBike.description}, ${newBike.createdAt}, ${newBike.updatedAt})`;
-
-    //      var result = dbClient->execute(insertQuery);
-
-    //     if result is sql:Error {
-    //         log:printError("Failed to insert bike", err = result.toString());
-    //         return {
-    //             message: "Failed to insert bike"
-    //         };
-    //     }
-
-    //     log:printInfo("Bike successfully created with ID: " + newBike.bikeId);
-    //     return {
-    //         message: "Bike created successfully",
-    //         data: { id: newBike.bikeId }
-    //     };
+        if result is string[] {
+            log:printInfo("Successfully created bike with ID: " + result[0]);
+            return {
+                message: "Bike created successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to create bike");
+            return {
+                message: "Failed to create bike"
+            };
+        }
         
-    // }
+        
+    }
 
     // resource function put update\-bike/[string bikeId](@http:Payload BikeUpdate bikeUpdate) returns Response {
 
