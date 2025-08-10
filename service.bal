@@ -4,6 +4,7 @@ import bike_service.repository;
 import ballerina/persist;
 import ballerina/uuid;
 import ballerina/time;
+import ballerina/sql;
 
 
 final repository:Client sClient = check new();
@@ -202,89 +203,83 @@ service /bike\-service on new http:Listener(8090) {
         
     }
 
-    // resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+    resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
 
-    //     log:printInfo("Received request: GET /active-bikes");
+        log:printInfo("Received request: GET /active-bikes");
 
-    //     sql:ParameterizedQuery query = `SELECT * FROM bikes WHERE is_active = true ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${pageOffset}`;
-    //     sql:ParameterizedQuery countQuery = `SELECT COUNT(*) as total FROM bikes WHERE is_active = true`;
+        sql:ParameterizedQuery whereClause = `"isActive" = true`;
+        sql:ParameterizedQuery orderByClause = `"createdAt" `;
+        sql:ParameterizedQuery limitClause = `${pageSize} OFFSET ${pageOffset}`;
 
-    //     stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
+        stream<repository:BikeOptionalized, persist:Error?> result = sClient->/bikes(
+            <repository:BikeTargetType>repository:BikeOptionalized,
+            whereClause,
+            orderByClause,
+            limitClause
+        );
 
-    //     Bike[] bikes = [];
-
-    //     error? e = result.forEach(function(Bike bike) {
-    //         bikes.push(bike);
-    //     });
-
-    //     if e is error {
-    //         log:printError("Error while processing active bikes stream", err = e.toString());
-    //         return {
-    //             message: "Failed to retrieve active bikes"
-    //         };
-    //     }
-
-    //     // Get total count for pagination info
-    //     stream<record {int total;}, sql:Error?> countResult = dbClient->query(countQuery);
-        
-    //     int totalCount = 0;
-    //     error? countError = countResult.forEach(function(record {int total;} countRecord) {
-    //         totalCount = countRecord.total;
-    //     });
-
-    //     if countError is error {
-    //         log:printWarn("Failed to get total count, using bikes array length");
-    //         totalCount = bikes.length();
-    //     }
-
-    //     log:printInfo("Successfully retrieved " + bikes.length().toString() + " active bikes out of " + totalCount.toString() + " total active bikes");
-        
-    //     return {
-    //         message: "Active bikes retrieved successfully",
-    //         data: {
-    //             bikes: bikes,
-    //             pagination: {
-    //                 total: totalCount,
-    //                 pageSize: pageSize,
-    //                 offset: pageOffset,
-    //                 returned: bikes.length()
-    //             }
-    //         }
-    //     };
+        repository:BikeOptionalized[] bikeList = [];
+        error? e = result.forEach(function(repository:BikeOptionalized bike) {
+            bikeList.push(bike);
+        });
        
-    // }
+        if e is error {
+            log:printError("Error while processing bike stream", err = e.toString());
+            return {
+                message: "Failed to retrieve bike details : " + e.toString()
+            };
+        }
 
-    // resource function put reserve\-bike/[string bikeId]() returns Response {
-    //     log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
+        return {
+            message: "Successfully retrieved bike details",
+            data: bikeList
+        };
+    }
 
-    //     // Check if the bike exists and is active
-    //     sql:ParameterizedQuery checkQuery = `SELECT * FROM bikes WHERE bikeId = ${bikeId}`;
-        
-    //     Bike|sql:Error bike = dbClient->queryRow(checkQuery);
+    resource function put reserve\-bike/[string bikeId]() returns Response {
+        log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
 
-        
-        
-    //     return {
-    //         message: "Bike reservation functionality is not implemented yet",
-    //         data : {}
-    //     };
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isReserved: true
+        });
 
-    // }
+        if result is repository:Bike {
+            log:printInfo("Successfully reserved bike with ID: " + bikeId);
+            return {
+                message: "Bike reserved successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to reserve bike with ID: " + bikeId);
+            return {
+                message: "Failed to reserve bike : " + result.toString()
+            };
+        }
 
-    // resource function put release\-bike/[string bikeId]() returns Response {
-    //     log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
+    }
 
-    //     // Check if the bike exists and is active
-    //     sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
-        
-    //     stream<record {string bikeId; boolean isActive; boolean isReserved;}, sql:Error?> checkResult = dbClient->query(checkQuery);
-        
-        
-    //     return {
-    //         message: "Bike reservation functionality is not implemented yet",
-    //         data : {}
-    //     };
+    resource function put release\-bike/[string bikeId]() returns Response {
+        log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
 
-    // }
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isReserved: false
+        });
+
+        if result is repository:Bike {
+            log:printInfo("Successfully released bike with ID: " + bikeId);
+            return {
+                message: "Bike released successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to release bike with ID: " + bikeId);
+            return {
+                message: "Failed to release bike : " + result.toString()
+            };
+        }
+
+    }
 
 }
