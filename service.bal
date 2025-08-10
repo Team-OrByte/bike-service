@@ -155,6 +155,29 @@ service /bike\-service on new http:Listener(8090) {
         }
     }
 
+    resource function put soft\-delete\-bike/[string bikeId]() returns Response {
+
+        log:printInfo("Received request: PUT /soft-delete-bike/" + bikeId);
+
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isActive: false
+        });
+
+        if result is repository:Bike {
+            log:printInfo("Successfully soft deleted bike with ID: " + bikeId);
+            return {
+                message: "Bike soft deleted successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to soft delete bike with ID: " + bikeId);
+            return {
+                message: "Failed to soft delete bike : " + result.toString()
+            };
+        }
+    }
+
     // resource function post restore\-bike/[string bikeId]() returns Response {
 
     //     log:printInfo("Received request: POST /restore-bike/" + bikeId);
