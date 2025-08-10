@@ -53,7 +53,7 @@ service /bike\-service on new http:Listener(8090) {
 
         log:printInfo("Received request: GET /bike/" + bikeId);
 
-        sql:ParameterizedQuery query = `SELECT * FROM bikes WHERE bike_id = ${bikeId}`;
+        sql:ParameterizedQuery query = `SELECT * FROM bikes WHERE bikeId = ${bikeId}`;
 
         stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
 
@@ -89,13 +89,11 @@ service /bike\-service on new http:Listener(8090) {
 
         string generatedBikeId = uuid:createType1AsString();
         
-        string currentTime = time:utcToString(time:utcNow());
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
         
         Bike newBike = {
             bikeId: generatedBikeId,
             addedById: bike.addedById,
-            isActive: bike.isActive,
-            isFlaggedForMaintenance: bike.isFlaggedForMaintenance,
             modelName: bike.modelName,
             brand: bike.brand,
             maxSpeed: bike.maxSpeed,
@@ -104,15 +102,18 @@ service /bike\-service on new http:Listener(8090) {
             imageUrl: bike.imageUrl,
             description: bike.description,
             createdAt: currentTime,
-            updatedAt: currentTime
+            updatedAt: currentTime,
+            isActive: true,
+            isFlaggedForMaintenance: false,
+            isReserved: false
         };
 
         log:printInfo("Received request: POST /create-bike");
 
         sql:ParameterizedQuery insertQuery = `INSERT INTO bikes 
-            (bike_id, added_by_id, is_active, is_flagged_for_maintenance, 
-            model_name, brand, max_speed_kmh, range_km, weight_kg, image_url, 
-            description, created_at, updated_at) 
+            (bikeId, addedById, isActive, isFlaggedForMaintenance, 
+            modelName, brand, maxSpeed, rangeKm, weightKg, imageUrl, 
+            description, createdAt, updatedAt) 
             VALUES (${newBike.bikeId}, ${newBike.addedById}, ${newBike.isActive}, 
             ${newBike.isFlaggedForMaintenance}, ${newBike.modelName}, ${newBike.brand}, 
             ${newBike.maxSpeed}, ${newBike.rangeKm}, ${newBike.weightKg}, 
@@ -139,39 +140,11 @@ service /bike\-service on new http:Listener(8090) {
 
         log:printInfo("Received request: PUT /update-bike/" + bikeId);
 
-        // First check if the bike exists
-        sql:ParameterizedQuery checkQuery = `SELECT bike_id FROM bikes WHERE bike_id = ${bikeId}`;
-        
-        stream<record {string bike_id;}, sql:Error?> checkResult = dbClient->query(checkQuery);
-        
-        record {string bike_id;}[] existingBikes = [];
-        error? checkError = checkResult.forEach(function(record {string bike_id;} bike) {
-            existingBikes.push(bike);
-        });
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
 
-        if checkError is error {
-            log:printError("Error while checking bike existence", err = checkError.toString());
-            return {
-                message: "Failed to check bike existence"
-            };
-        }
-
-        if existingBikes.length() == 0 {
-            log:printWarn("Bike not found with ID: " + bikeId);
-            return {
-                message: "Bike not found"
-            };
-        }
-
-        // Get current time for updated_at
-        string currentTime = time:utcToString(time:utcNow());
-
-        // Use individual parameterized queries based on what fields are provided
         sql:ExecutionResult|sql:Error result;
         
-        // Selective update - we'll use a simpler approach for now
-        // First get the current bike data
-        sql:ParameterizedQuery getCurrentQuery = `SELECT * FROM bikes WHERE bike_id = ${bikeId}`;
+        sql:ParameterizedQuery getCurrentQuery = `SELECT * FROM bikes WHERE bikeId = ${bikeId}`;
         stream<Bike, sql:Error?> currentResult = dbClient->query(getCurrentQuery, Bike);
         
         Bike? currentBike = ();
@@ -188,7 +161,6 @@ service /bike\-service on new http:Listener(8090) {
 
         Bike bike = <Bike>currentBike;
 
-        // Use current values or new values
         boolean finalIsActive = bikeUpdate.isActive ?: bike.isActive;
         boolean finalIsFlagged = bikeUpdate.isFlaggedForMaintenance ?: bike.isFlaggedForMaintenance;
         string finalModelName = bikeUpdate.modelName ?: bike.modelName;
@@ -198,19 +170,21 @@ service /bike\-service on new http:Listener(8090) {
         int finalWeightKg = bikeUpdate.weightKg ?: bike.weightKg;
         string? finalImageUrl = bikeUpdate.imageUrl ?: bike.imageUrl;
         string? finalDescription = bikeUpdate.description ?: bike.description;
+        boolean isReserved = bikeUpdate.isReserved ?: bike.isReserved;
 
         sql:ParameterizedQuery updateQuery = `UPDATE bikes SET 
-            is_active = ${finalIsActive}, 
-            is_flagged_for_maintenance = ${finalIsFlagged}, 
-            model_name = ${finalModelName}, 
+            isActive = ${finalIsActive}, 
+            isFlaggedForMaintenance = ${finalIsFlagged}, 
+            modelName = ${finalModelName}, 
             brand = ${finalBrand}, 
-            max_speed_kmh = ${finalMaxSpeed}, 
-            range_km = ${finalRangeKm}, 
-            weight_kg = ${finalWeightKg}, 
-            image_url = ${finalImageUrl}, 
+            maxSpeed = ${finalMaxSpeed}, 
+            rangeKm = ${finalRangeKm}, 
+            weightKg = ${finalWeightKg}, 
+            imageUrl = ${finalImageUrl}, 
             description = ${finalDescription}, 
-            updated_at = ${currentTime} 
-            WHERE bike_id = ${bikeId}`;
+            updatedAt = ${currentTime},
+            isReserved = ${isReserved}, 
+            WHERE bikeId = ${bikeId}`;
         result = dbClient->execute(updateQuery);
         
 
@@ -234,12 +208,12 @@ service /bike\-service on new http:Listener(8090) {
         log:printInfo("Received request: DELETE /delete-bike/" + bikeId);
 
         // First check if the bike exists and is currently active
-        sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
+        sql:ParameterizedQuery checkQuery = `SELECT bikeId, isActive FROM bikes WHERE bikeId = ${bikeId}`;
         
-        stream<record {string bike_id; boolean is_active;}, sql:Error?> checkResult = dbClient->query(checkQuery);
+        stream<record {string bikeId; boolean isActive;}, sql:Error?> checkResult = dbClient->query(checkQuery);
         
-        record {string bike_id; boolean is_active;}[] existingBikes = [];
-        error? checkError = checkResult.forEach(function(record {string bike_id; boolean is_active;} bike) {
+        record {string bikeId; boolean isActive;}[] existingBikes = [];
+        error? checkError = checkResult.forEach(function(record {string bikeId; boolean isActive;} bike) {
             existingBikes.push(bike);
         });
 
@@ -258,7 +232,7 @@ service /bike\-service on new http:Listener(8090) {
         }
 
         // Check if bike is already soft deleted
-        if !existingBikes[0].is_active {
+        if !existingBikes[0].isActive {
             log:printWarn("Bike is already deleted with ID: " + bikeId);
             return {
                 message: "Bike is already deleted"
@@ -404,5 +378,38 @@ service /bike\-service on new http:Listener(8090) {
         };
        
     }
+
+    // resource function put reserve\-bike/[string bikeId]() returns Response {
+    //     log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
+
+    //     // Check if the bike exists and is active
+    //     sql:ParameterizedQuery checkQuery = `SELECT * FROM bikes WHERE bikeId = ${bikeId}`;
+        
+    //     Bike|sql:Error bike = dbClient->queryRow(checkQuery);
+
+        
+        
+    //     return {
+    //         message: "Bike reservation functionality is not implemented yet",
+    //         data : {}
+    //     };
+
+    // }
+
+    // resource function put release\-bike/[string bikeId]() returns Response {
+    //     log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
+
+    //     // Check if the bike exists and is active
+    //     sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
+        
+    //     stream<record {string bikeId; boolean isActive; boolean isReserved;}, sql:Error?> checkResult = dbClient->query(checkQuery);
+        
+        
+    //     return {
+    //         message: "Bike reservation functionality is not implemented yet",
+    //         data : {}
+    //     };
+
+    // }
 
 }
