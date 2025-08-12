@@ -1,20 +1,13 @@
 import ballerina/http;
-import ballerinax/postgresql;
-import ballerina/sql;
 import ballerina/log;
+import bike_service.repository;
+import ballerina/persist;
 import ballerina/uuid;
 import ballerina/time;
+import ballerina/sql;
 
-configurable int db_port = ?;
-configurable string db_host = ?;
-configurable string db_pass = ?;
-configurable string db_user = ?;
-configurable string db_name = ?;
 
-postgresql:Options postgresqlOptions = {
-  connectTimeout: 10
-};
-postgresql:Client dbClient = check new (username = db_user, password = db_pass, database = db_name,host=db_host,port=db_port, options = postgresqlOptions);
+final repository:Client sClient = check new();
 
 service /bike\-service on new http:Listener(8090) {
 
@@ -22,297 +15,321 @@ service /bike\-service on new http:Listener(8090) {
 
         log:printInfo("Received request: GET /bikes");
 
-        sql:ParameterizedQuery query = `SELECT * FROM bikes`;
-
-        stream<Bike, sql:Error?> result = dbClient->query(query, Bike);
-
-        Bike[] bikes = [];
-
-        error? e = result.forEach(function(Bike bike) {
-            bikes.push(bike);
+        stream <repository:Bike,persist:Error?> bikes = sClient->/bikes;
+        repository:Bike[] bikeList = [];
+        error? e = bikes.forEach(function(repository:Bike bike) {
+            bikeList.push(bike);
         });
 
         if e is error {
-            log:printError("Error while processing bikes stream", err = e.toString());
+            log:printError("Error while processing bike stream", err = e.toString());
             return {
-                message: "Failed to insert bike" 
-            };
-        } else {
-            log:printInfo("Successfully retrieved bikes: " + bikes.length().toString());
-            return {
-                message : "Bikes list retrieved successfully",
-                data : bikes
+                message: "Failed to retrieve bike details"
             };
         }
 
-        
-    }
+        log:printInfo("Successfully retrieved bike details");
 
-    resource function post create\-bike(@http:Payload BikeInsert bike) returns Response {
-
-        string generatedBikeId = uuid:createType1AsString();
-        
-        string currentTime = time:utcToString(time:utcNow());
-        
-        Bike newBike = {
-            bikeId: generatedBikeId,
-            addedById: bike.addedById,
-            isActive: bike.isActive,
-            isFlaggedForMaintenance: bike.isFlaggedForMaintenance,
-            modelName: bike.modelName,
-            brand: bike.brand,
-            maxSpeed: bike.maxSpeed,
-            rangeKm: bike.rangeKm,
-            weightKg: bike.weightKg,
-            imageUrl: bike.imageUrl,
-            description: bike.description,
-            createdAt: currentTime,
-            updatedAt: currentTime
-        };
-
-        log:printInfo("Received request: POST /create-bike");
-
-        sql:ParameterizedQuery insertQuery = `INSERT INTO bikes 
-            (bike_id, added_by_id, is_active, is_flagged_for_maintenance, 
-            model_name, brand, max_speed_kmh, range_km, weight_kg, image_url, 
-            description, created_at, updated_at) 
-            VALUES (${newBike.bikeId}, ${newBike.addedById}, ${newBike.isActive}, 
-            ${newBike.isFlaggedForMaintenance}, ${newBike.modelName}, ${newBike.brand}, 
-            ${newBike.maxSpeed}, ${newBike.rangeKm}, ${newBike.weightKg}, 
-            ${newBike.imageUrl}, ${newBike.description}, ${newBike.createdAt}, ${newBike.updatedAt})`;
-
-         var result = dbClient->execute(insertQuery);
-
-        if result is sql:Error {
-            log:printError("Failed to insert bike", err = result.toString());
-            return {
-                message: "Failed to insert bike"
-            };
-        }
-
-        log:printInfo("Bike successfully created with ID: " + newBike.bikeId);
         return {
-            message: "Bike created successfully",
-            data: { id: newBike.bikeId }
+            message: "Bikes retrieved successfully",
+            data: bikeList
         };
-        
     }
 
-    resource function put update\-bike/[string bikeId](@http:Payload BikeUpdate bikeUpdate) returns Response {
+    resource function get bike/[string bikeId]() returns Response {
 
-        log:printInfo("Received request: PUT /update-bike/" + bikeId);
+        log:printInfo("Received request: GET /bike/" + bikeId);
 
-        // First check if the bike exists
-        sql:ParameterizedQuery checkQuery = `SELECT bike_id FROM bikes WHERE bike_id = ${bikeId}`;
-        
-        stream<record {string bike_id;}, sql:Error?> checkResult = dbClient->query(checkQuery);
-        
-        record {string bike_id;}[] existingBikes = [];
-        error? checkError = checkResult.forEach(function(record {string bike_id;} bike) {
-            existingBikes.push(bike);
-        });
+        repository:Bike|persist:Error bike = sClient->/bikes/[bikeId]();
 
-        if checkError is error {
-            log:printError("Error while checking bike existence", err = checkError.toString());
+        if bike is repository:Bike {
+            log:printInfo("Successfully retrieved bike details");
             return {
-                message: "Failed to check bike existence"
+                message: "Bike details retrieved successfully",
+                data: bike
             };
         }
-
-        if existingBikes.length() == 0 {
+        else {
             log:printWarn("Bike not found with ID: " + bikeId);
             return {
                 message: "Bike not found"
             };
         }
+        
+    }
 
-        // Get current time for updated_at
-        string currentTime = time:utcToString(time:utcNow());
+    resource function post create\-bike(@http:Payload repository:BikeOptionalized bike) returns Response {
 
-        // Use individual parameterized queries based on what fields are provided
-        sql:ExecutionResult|sql:Error result;
+        string generatedBikeId = uuid:createType1AsString();
+        string addedById = "7f34d7a7-c249-44c9-add1-50e79dda8703";
         
-        // Selective update - we'll use a simpler approach for now
-        // First get the current bike data
-        sql:ParameterizedQuery getCurrentQuery = `SELECT * FROM bikes WHERE bike_id = ${bikeId}`;
-        stream<Bike, sql:Error?> currentResult = dbClient->query(getCurrentQuery, Bike);
-        
-        Bike? currentBike = ();
-        error? fetchError = currentResult.forEach(function(Bike bike) {
-            currentBike = bike;
-        });
-        
-        if fetchError is error || currentBike is () {
-            log:printError("Failed to fetch current bike data");
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
+
+        //check all necessary fields are there
+        if bike.modelName is () || bike.brand is () || bike.maxSpeed is () || bike.rangeKm is () || bike.weightKg is () {
+            log:printError("Missing required fields for bike creation");
             return {
-                message: "Failed to fetch current bike data"
+                message: "Missing required fields for bike creation"
             };
         }
-
-        Bike bike = <Bike>currentBike;
-
-        // Use current values or new values
-        boolean finalIsActive = bikeUpdate.isActive ?: bike.isActive;
-        boolean finalIsFlagged = bikeUpdate.isFlaggedForMaintenance ?: bike.isFlaggedForMaintenance;
-        string finalModelName = bikeUpdate.modelName ?: bike.modelName;
-        string finalBrand = bikeUpdate.brand ?: bike.brand;
-        int finalMaxSpeed = bikeUpdate.maxSpeed ?: bike.maxSpeed;
-        int finalRangeKm = bikeUpdate.rangeKm ?: bike.rangeKm;
-        int finalWeightKg = bikeUpdate.weightKg ?: bike.weightKg;
-        string? finalImageUrl = bikeUpdate.imageUrl ?: bike.imageUrl;
-        string? finalDescription = bikeUpdate.description ?: bike.description;
-
-        sql:ParameterizedQuery updateQuery = `UPDATE bikes SET 
-            is_active = ${finalIsActive}, 
-            is_flagged_for_maintenance = ${finalIsFlagged}, 
-            model_name = ${finalModelName}, 
-            brand = ${finalBrand}, 
-            max_speed_kmh = ${finalMaxSpeed}, 
-            range_km = ${finalRangeKm}, 
-            weight_kg = ${finalWeightKg}, 
-            image_url = ${finalImageUrl}, 
-            description = ${finalDescription}, 
-            updated_at = ${currentTime} 
-            WHERE bike_id = ${bikeId}`;
-        result = dbClient->execute(updateQuery);
         
-
-        if result is sql:Error {
-            log:printError("Failed to update bike", err = result.toString());
-            return {
-                message: "Failed to update bike"
-            };
-        }
-
-        log:printInfo("Bike successfully updated with ID: " + bikeId);
-        return {
-            message: "Bike updated successfully",
-            data: { id: bikeId }
+        repository:Bike newBike = {
+            bikeId: generatedBikeId,
+            addedById: addedById,
+            modelName: <string>bike.modelName,
+            brand: <string>bike.brand,
+            maxSpeed: <int>bike.maxSpeed,
+            rangeKm: <int>bike.rangeKm,
+            weightKg: <int>bike.weightKg,
+            imageUrl: <string>bike.imageUrl,
+            description: <string>bike.description,
+            createdAt: currentTime,
+            updatedAt: currentTime,
+            isActive: true,
+            isFlaggedForMaintenance: false,
+            isReserved: false
         };
+
+        string[]|persist:Error result = sClient->/bikes.post([newBike]);
+
+        if result is string[] {
+            log:printInfo("Successfully created bike with ID: " + result[0]);
+            return {
+                message: "Bike created successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to create bike");
+            return {
+                message: "Failed to create bike"
+            };
+        }
         
+        
+    }
+
+    resource function put update\-bike/[string bikeId](@http:Payload repository:BikeUpdate bikeUpdate) returns Response {
+
+        log:printInfo("Received request: PUT /update-bike/" + bikeId);
+
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
+
+        bikeUpdate.updatedAt = currentTime;
+
+        //update necessary fields only
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put(bikeUpdate);
+
+        if result is repository:Bike {
+            log:printInfo("Successfully updated bike with ID: " + bikeId);
+            return {
+                message: "Bike updated successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to update bike with ID: " + bikeId);
+            return {
+                message: "Failed to update bike : " + result.toString()
+            };
+        }
     }
 
     resource function delete delete\-bike/[string bikeId]() returns Response {
 
         log:printInfo("Received request: DELETE /delete-bike/" + bikeId);
 
-        // First check if the bike exists and is currently active
-        sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
-        
-        stream<record {string bike_id; boolean is_active;}, sql:Error?> checkResult = dbClient->query(checkQuery);
-        
-        record {string bike_id; boolean is_active;}[] existingBikes = [];
-        error? checkError = checkResult.forEach(function(record {string bike_id; boolean is_active;} bike) {
-            existingBikes.push(bike);
-        });
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].delete();
 
-        if checkError is error {
-            log:printError("Error while checking bike existence", err = checkError.toString());
+        if result is repository:Bike {
+            log:printInfo("Successfully deleted bike with ID: " + bikeId);
             return {
-                message: "Failed to check bike existence"
+                message: "Bike deleted successfully",
+                data: result
             };
         }
-
-        if existingBikes.length() == 0 {
-            log:printWarn("Bike not found with ID: " + bikeId);
+        else {
+            log:printError("Failed to delete bike with ID: " + bikeId);
             return {
-                message: "Bike not found"
+                message: "Failed to delete bike : " + result.toString()
             };
         }
-
-        // Check if bike is already soft deleted
-        if !existingBikes[0].is_active {
-            log:printWarn("Bike is already deleted with ID: " + bikeId);
-            return {
-                message: "Bike is already deleted"
-            };
-        }
-
-        // Get current time for updated_at
-        string currentTime = time:utcToString(time:utcNow());
-
-        // Perform soft delete by setting is_active to false
-        sql:ParameterizedQuery deleteQuery = `UPDATE bikes SET 
-            is_active = false, 
-            updated_at = ${currentTime} 
-            WHERE bike_id = ${bikeId}`;
-
-        var result = dbClient->execute(deleteQuery);
-
-        if result is sql:Error {
-            log:printError("Failed to soft delete bike", err = result.toString());
-            return {
-                message: "Failed to delete bike"
-            };
-        }
-
-        log:printInfo("Bike successfully soft deleted with ID: " + bikeId);
-        return {
-            message: "Bike deleted successfully",
-            data: { id: bikeId }
-        };
-        
     }
 
-    resource function post restore\-bike/[string bikeId]() returns Response {
+    resource function put soft\-delete\-bike/[string bikeId]() returns Response {
+
+        log:printInfo("Received request: PUT /soft-delete-bike/" + bikeId);
+
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isActive: false
+        });
+
+        if result is repository:Bike {
+            log:printInfo("Successfully soft deleted bike with ID: " + bikeId);
+            return {
+                message: "Bike soft deleted successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to soft delete bike with ID: " + bikeId);
+            return {
+                message: "Failed to soft delete bike : " + result.toString()
+            };
+        }
+    }
+
+    resource function put restore\-bike/[string bikeId]() returns Response {
 
         log:printInfo("Received request: POST /restore-bike/" + bikeId);
 
-        // First check if the bike exists and is currently inactive
-        sql:ParameterizedQuery checkQuery = `SELECT bike_id, is_active FROM bikes WHERE bike_id = ${bikeId}`;
-        
-        stream<record {string bike_id; boolean is_active;}, sql:Error?> checkResult = dbClient->query(checkQuery);
-        
-        record {string bike_id; boolean is_active;}[] existingBikes = [];
-        error? checkError = checkResult.forEach(function(record {string bike_id; boolean is_active;} bike) {
-            existingBikes.push(bike);
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isActive: true
         });
 
-        if checkError is error {
-            log:printError("Error while checking bike existence", err = checkError.toString());
+        if result is repository:Bike {
+            log:printInfo("Successfully restored bike with ID: " + bikeId);
             return {
-                message: "Failed to check bike existence"
+                message: "Bike restored successfully",
+                data: result
             };
         }
-
-        if existingBikes.length() == 0 {
-            log:printWarn("Bike not found with ID: " + bikeId);
+        else {
+            log:printError("Failed to restore bike with ID: " + bikeId);
             return {
-                message: "Bike not found"
+                message: "Failed to restore bike : " + result.toString()
             };
         }
-
-        // Check if bike is already active
-        if existingBikes[0].is_active {
-            log:printWarn("Bike is already active with ID: " + bikeId);
-            return {
-                message: "Bike is already active"
-            };
-        }
-
-        // Get current time for updated_at
-        string currentTime = time:utcToString(time:utcNow());
-
-        // Restore bike by setting is_active to true
-        sql:ParameterizedQuery restoreQuery = `UPDATE bikes SET 
-            is_active = true, 
-            updated_at = ${currentTime} 
-            WHERE bike_id = ${bikeId}`;
-
-        var result = dbClient->execute(restoreQuery);
-
-        if result is sql:Error {
-            log:printError("Failed to restore bike", err = result.toString());
-            return {
-                message: "Failed to restore bike"
-            };
-        }
-
-        log:printInfo("Bike successfully restored with ID: " + bikeId);
-        return {
-            message: "Bike restored successfully",
-            data: { id: bikeId }
-        };
         
     }
+
+    resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+
+        log:printInfo("Received request: GET /active-bikes");
+
+        sql:ParameterizedQuery whereClause = `"isActive" = true`;
+        sql:ParameterizedQuery orderByClause = `"createdAt" `;
+        sql:ParameterizedQuery limitClause = `${pageSize} OFFSET ${pageOffset}`;
+
+        stream<repository:BikeOptionalized, persist:Error?> result = sClient->/bikes(
+            <repository:BikeTargetType>repository:BikeOptionalized,
+            whereClause,
+            orderByClause,
+            limitClause
+        );
+
+        repository:BikeOptionalized[] bikeList = [];
+        error? e = result.forEach(function(repository:BikeOptionalized bike) {
+            bikeList.push(bike);
+        });
+       
+        if e is error {
+            log:printError("Error while processing bike stream", err = e.toString());
+            return {
+                message: "Failed to retrieve bike details : " + e.toString()
+            };
+        }
+
+        return {
+            message: "Successfully retrieved bike details",
+            data: bikeList
+        };
+    }
+
+    resource function put reserve\-bike/[string bikeId]() returns Response|error {
+        log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
+
+        //check if the bike is already reserved,under maintenance or deleted
+        BikeStatus|persist:Error availabilityCheck = check sClient->/bikes/[bikeId]();
+
+        if availabilityCheck is BikeStatus {
+            if !availabilityCheck.isActive {
+                log:printError("Failed to reserve bike with ID: " + bikeId);
+                return {
+                    message: "Bike is deleted or under maintenance"
+                };
+            }
+            else if availabilityCheck.isReserved {
+                log:printError("Failed to reserve bike with ID: " + bikeId);
+                return {
+                    message: "Bike is already reserved"
+                };
+            }            
+        }
+
+        repository:Bike|persist:Error result = check sClient->/bikes/[bikeId].put({
+            isReserved: true
+        });
+
+        if result is repository:Bike {
+            log:printInfo("Successfully reserved bike with ID: " + bikeId);
+            return {
+                message: "Bike reserved successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to reserve bike with ID: " + bikeId);
+            return {
+                message: "Failed to reserve bike : " + result.toString()
+            };
+        }
+
+    }
+
+    resource function put release\-bike/[string bikeId]() returns Response {
+        log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
+
+        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+            isReserved: false
+        });
+
+        if result is repository:Bike {
+            log:printInfo("Successfully released bike with ID: " + bikeId);
+            return {
+                message: "Bike released successfully",
+                data: result
+            };
+        }
+        else {
+            log:printError("Failed to release bike with ID: " + bikeId);
+            return {
+                message: "Failed to release bike : " + result.toString()
+            };
+        }
+
+    }
+
+    resource function get unreserved\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+        log:printInfo("Received request: GET /unreserved-bikes");
+
+        sql:ParameterizedQuery whereClause = `"isReserved" = false`;
+        sql:ParameterizedQuery orderByClause = `"createdAt" `;
+        sql:ParameterizedQuery limitClause = `${pageSize} OFFSET ${pageOffset}`;
+
+        stream<repository:BikeOptionalized, persist:Error?> result = sClient->/bikes(
+            <repository:BikeTargetType>repository:BikeOptionalized,
+            whereClause,
+            orderByClause,
+            limitClause
+        );
+
+        repository:BikeOptionalized[] bikeList = [];
+        error? e = result.forEach(function(repository:BikeOptionalized bike) {
+            bikeList.push(bike);
+        });
+       
+        if e is error {
+            log:printError("Error while processing bike stream", err = e.toString());
+            return {
+                message: "Failed to retrieve bike details : " + e.toString()
+            };
+        }
+
+        return {
+            message: "Successfully retrieved bike details",
+            data: bikeList
+        };
+    }
+
 }

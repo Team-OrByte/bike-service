@@ -9,9 +9,9 @@ observabilityIncluded = true
 cloud="docker"
 
 [[platform.java17.dependency]]
-groupId = "org.postgresql"
-artifactId = "postgresql"
-version = "42.2.20"
+groupId = "io.ballerina.stdlib"
+artifactId = "persist.sql-native"
+version = "1.6.0"
 
 [ballerina.observe]
 metricsEnabled = false
@@ -19,3 +19,10 @@ tracingEnabled = false
 logsEnabled = true
 logLevel = "DEBUG"
 logFilePath = "./logs/bike-service.log"
+
+[[platform.java21.dependency]]
+groupId = "io.ballerina.stdlib"
+artifactId = "persist.sql-native"
+version = "1.6.0"
+
+
