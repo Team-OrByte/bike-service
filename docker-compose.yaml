@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  bike_service_db:
+  bike-service-db:
     image: postgres:15
     container_name: bike_service_db
     restart: unless-stopped
@@ -18,7 +18,7 @@ services:
   bike-service:
     image: bike_service:latest
     depends_on:
-      - bike_service_db
+      - bike-service-db
     ports:
       - '8090:8090'
     volumes:
