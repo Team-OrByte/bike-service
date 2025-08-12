@@ -11,26 +11,21 @@ final repository:Client sClient = check new();
 
 service /bike\-service on new http:Listener(8090) {
 
-    resource function get bikes() returns Response{
+    resource function get bikes() returns Response|error{
 
         log:printInfo("Received request: GET /bikes");
 
         stream <repository:Bike,persist:Error?> bikes = sClient->/bikes;
         repository:Bike[] bikeList = [];
-        error? e = bikes.forEach(function(repository:Bike bike) {
+
+        check bikes.forEach(function(repository:Bike bike) {
             bikeList.push(bike);
         });
-
-        if e is error {
-            log:printError("Error while processing bike stream", err = e.toString());
-            return {
-                message: "Failed to retrieve bike details"
-            };
-        }
 
         log:printInfo("Successfully retrieved bike details");
 
         return {
+            statusCode: http:STATUS_OK,
             message: "Bikes retrieved successfully",
             data: bikeList
         };
@@ -45,6 +40,7 @@ service /bike\-service on new http:Listener(8090) {
         if bike is repository:Bike {
             log:printInfo("Successfully retrieved bike details");
             return {
+                statusCode: http:STATUS_OK,
                 message: "Bike details retrieved successfully",
                 data: bike
             };
@@ -52,13 +48,14 @@ service /bike\-service on new http:Listener(8090) {
         else {
             log:printWarn("Bike not found with ID: " + bikeId);
             return {
+                statusCode: http:STATUS_NOT_FOUND,
                 message: "Bike not found"
             };
         }
         
     }
 
-    resource function post create\-bike(@http:Payload repository:BikeOptionalized bike) returns Response {
+    resource function post create\-bike(@http:Payload repository:BikeOptionalized bike) returns Response|error {
 
         string generatedBikeId = uuid:createType1AsString();
         string addedById = "7f34d7a7-c249-44c9-add1-50e79dda8703";
@@ -69,6 +66,7 @@ service /bike\-service on new http:Listener(8090) {
         if bike.modelName is () || bike.brand is () || bike.maxSpeed is () || bike.rangeKm is () || bike.weightKg is () {
             log:printError("Missing required fields for bike creation");
             return {
+                statusCode: http:STATUS_BAD_REQUEST,
                 message: "Missing required fields for bike creation"
             };
         }
@@ -90,26 +88,17 @@ service /bike\-service on new http:Listener(8090) {
             isReserved: false
         };
 
-        string[]|persist:Error result = sClient->/bikes.post([newBike]);
+        string[] result = check sClient->/bikes.post([newBike]);
 
-        if result is string[] {
-            log:printInfo("Successfully created bike with ID: " + result[0]);
-            return {
-                message: "Bike created successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to create bike");
-            return {
-                message: "Failed to create bike"
-            };
-        }
-        
-        
+        log:printInfo("Successfully created bike with ID: " + result[0]);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike created successfully",
+            data: result
+        };
     }
 
-    resource function put update\-bike/[string bikeId](@http:Payload repository:BikeUpdate bikeUpdate) returns Response {
+    resource function put update\-bike/[string bikeId](@http:Payload repository:BikeUpdate bikeUpdate) returns Response|error {
 
         log:printInfo("Received request: PUT /update-bike/" + bikeId);
 
@@ -118,92 +107,64 @@ service /bike\-service on new http:Listener(8090) {
         bikeUpdate.updatedAt = currentTime;
 
         //update necessary fields only
-        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put(bikeUpdate);
+        repository:Bike result = check sClient->/bikes/[bikeId].put(bikeUpdate);
 
-        if result is repository:Bike {
-            log:printInfo("Successfully updated bike with ID: " + bikeId);
-            return {
-                message: "Bike updated successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to update bike with ID: " + bikeId);
-            return {
-                message: "Failed to update bike : " + result.toString()
-            };
-        }
+        log:printInfo("Successfully updated bike with ID: " + bikeId);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike updated successfully",
+            data: result
+        };
     }
 
-    resource function delete delete\-bike/[string bikeId]() returns Response {
+    resource function delete delete\-bike/[string bikeId]() returns Response|error {
 
         log:printInfo("Received request: DELETE /delete-bike/" + bikeId);
 
-        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].delete();
+        repository:Bike result = check  sClient->/bikes/[bikeId].delete();
 
-        if result is repository:Bike {
-            log:printInfo("Successfully deleted bike with ID: " + bikeId);
-            return {
-                message: "Bike deleted successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to delete bike with ID: " + bikeId);
-            return {
-                message: "Failed to delete bike : " + result.toString()
-            };
-        }
+        log:printInfo("Successfully deleted bike with ID: " + bikeId);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike deleted successfully",
+            data: result
+        };
     }
 
-    resource function put soft\-delete\-bike/[string bikeId]() returns Response {
+    resource function put soft\-delete\-bike/[string bikeId]() returns Response | error {
 
         log:printInfo("Received request: PUT /soft-delete-bike/" + bikeId);
 
-        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+        repository:Bike result = check sClient->/bikes/[bikeId].put({
             isActive: false
         });
 
-        if result is repository:Bike {
-            log:printInfo("Successfully soft deleted bike with ID: " + bikeId);
-            return {
-                message: "Bike soft deleted successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to soft delete bike with ID: " + bikeId);
-            return {
-                message: "Failed to soft delete bike : " + result.toString()
-            };
-        }
-    }
-
-    resource function put restore\-bike/[string bikeId]() returns Response {
-
-        log:printInfo("Received request: POST /restore-bike/" + bikeId);
-
-        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
-            isActive: true
-        });
-
-        if result is repository:Bike {
-            log:printInfo("Successfully restored bike with ID: " + bikeId);
-            return {
-                message: "Bike restored successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to restore bike with ID: " + bikeId);
-            return {
-                message: "Failed to restore bike : " + result.toString()
-            };
-        }
+        log:printInfo("Successfully soft deleted bike with ID: " + bikeId);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike soft deleted successfully",
+            data: result
+        };
         
     }
 
-    resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+    resource function put restore\-bike/[string bikeId]() returns Response|error {
+
+        log:printInfo("Received request: POST /restore-bike/" + bikeId);
+
+        repository:Bike result = check sClient->/bikes/[bikeId].put({
+            isActive: true
+        });
+
+        log:printInfo("Successfully restored bike with ID: " + bikeId);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike restored successfully",
+            data: result
+        };
+    }
+
+    resource function get active\-bikes(int pageSize = 50, int pageOffset = 0) returns Response | error {
 
         log:printInfo("Received request: GET /active-bikes");
 
@@ -219,18 +180,13 @@ service /bike\-service on new http:Listener(8090) {
         );
 
         repository:BikeOptionalized[] bikeList = [];
-        error? e = result.forEach(function(repository:BikeOptionalized bike) {
+        check result.forEach(function(repository:BikeOptionalized bike) {
             bikeList.push(bike);
         });
-       
-        if e is error {
-            log:printError("Error while processing bike stream", err = e.toString());
-            return {
-                message: "Failed to retrieve bike details : " + e.toString()
-            };
-        }
 
+        log:printInfo("Successfully retrieved bike details");
         return {
+            statusCode: http:STATUS_OK,
             message: "Successfully retrieved bike details",
             data: bikeList
         };
@@ -246,61 +202,47 @@ service /bike\-service on new http:Listener(8090) {
             if !availabilityCheck.isActive {
                 log:printError("Failed to reserve bike with ID: " + bikeId);
                 return {
+                    statusCode: http:STATUS_BAD_REQUEST,
                     message: "Bike is deleted or under maintenance"
                 };
             }
             else if availabilityCheck.isReserved {
                 log:printError("Failed to reserve bike with ID: " + bikeId);
                 return {
+                    statusCode: http:STATUS_BAD_REQUEST,
                     message: "Bike is already reserved"
                 };
             }            
         }
 
-        repository:Bike|persist:Error result = check sClient->/bikes/[bikeId].put({
+        repository:Bike result = check sClient->/bikes/[bikeId].put({
             isReserved: true
         });
 
-        if result is repository:Bike {
-            log:printInfo("Successfully reserved bike with ID: " + bikeId);
-            return {
-                message: "Bike reserved successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to reserve bike with ID: " + bikeId);
-            return {
-                message: "Failed to reserve bike : " + result.toString()
-            };
-        }
-
+        log:printInfo("Successfully reserved bike with ID: " + bikeId);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike reserved successfully",
+            data: result
+        };
     }
 
-    resource function put release\-bike/[string bikeId]() returns Response {
+    resource function put release\-bike/[string bikeId]() returns Response | error{
         log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
 
-        repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put({
+        repository:Bike result = check sClient->/bikes/[bikeId].put({
             isReserved: false
         });
 
-        if result is repository:Bike {
-            log:printInfo("Successfully released bike with ID: " + bikeId);
-            return {
-                message: "Bike released successfully",
-                data: result
-            };
-        }
-        else {
-            log:printError("Failed to release bike with ID: " + bikeId);
-            return {
-                message: "Failed to release bike : " + result.toString()
-            };
-        }
-
+        log:printInfo("Successfully released bike with ID: " + bikeId);
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Bike released successfully",
+            data: result
+        };
     }
 
-    resource function get unreserved\-bikes(int pageSize = 50, int pageOffset = 0) returns Response {
+    resource function get unreserved\-bikes(int pageSize = 50, int pageOffset = 0) returns Response|error {
         log:printInfo("Received request: GET /unreserved-bikes");
 
         sql:ParameterizedQuery whereClause = `"isReserved" = false`;
@@ -315,21 +257,14 @@ service /bike\-service on new http:Listener(8090) {
         );
 
         repository:BikeOptionalized[] bikeList = [];
-        error? e = result.forEach(function(repository:BikeOptionalized bike) {
+        check result.forEach(function(repository:BikeOptionalized bike) {
             bikeList.push(bike);
         });
-       
-        if e is error {
-            log:printError("Error while processing bike stream", err = e.toString());
-            return {
-                message: "Failed to retrieve bike details : " + e.toString()
-            };
-        }
 
         return {
+            statusCode: http:STATUS_OK,
             message: "Successfully retrieved bike details",
             data: bikeList
         };
     }
-
 }
