@@ -2,7 +2,7 @@ import ballerina/persist as _;
 import ballerina/time;
 import ballerinax/persist.sql;
 
-@sql:Name {value:"'bike"}
+@sql:Name {value:"bike"}
 type Bike record {|
 readonly string bikeId;
 string addedById;
