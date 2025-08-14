@@ -85,7 +85,9 @@ service /bike\-service on new http:Listener(8090) {
             updatedAt: currentTime,
             isActive: true,
             isFlaggedForMaintenance: false,
-            isReserved: false
+            isReserved: false,
+            batteryLevel: <int>bike.batteryLevel,
+            stationId: <string>bike.stationId
         };
 
         string[] result = check sClient->/bikes.post([newBike]);
@@ -267,4 +269,72 @@ service /bike\-service on new http:Listener(8090) {
             data: bikeList
         };
     }
+
+    resource function get stations() returns Response|error {
+        log:printInfo("Received request: GET /stations");
+        stream<repository:Station, persist:Error?> result = sClient->/stations();
+        repository:Station[] stationList = [];
+        check result.forEach(function(repository:Station station) {
+            stationList.push(station);
+        });
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Successfully retrieved station details",
+            data: stationList
+        };
+    }
+
+    resource function get nearby\-stations(string latitude, string longitude, int radius) returns Response|error {
+        log:printInfo("Received request: GET /nearby-stations");
+
+        //implement the logic for this
+        stream<repository:Station, persist:Error?> result = sClient->/stations();
+        repository:Station[] stationList = [];
+        check result.forEach(function(repository:Station station) {
+            stationList.push(station);
+        });
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Successfully retrieved station details",
+            data: stationList
+        };
+    }
+
+    resource function get bikes\-by\-station/[string stationId]( int pageSize = 50, int pageOffset = 0) returns Response|error {
+        log:printInfo("Received request: GET /bikes-by-station");
+        //implement the logic for this
+        sql:ParameterizedQuery whereClause = `"stationId" = ${stationId}`;
+        sql:ParameterizedQuery orderByClause = `"createdAt" `;
+        sql:ParameterizedQuery limitClause = `${pageSize} OFFSET ${pageOffset}`;
+        stream<repository:BikeOptionalized, persist:Error?> result = sClient->/bikes(
+            <repository:BikeTargetType>repository:BikeOptionalized,
+            whereClause,
+            orderByClause,
+            limitClause
+        );
+        repository:BikeOptionalized[] bikeList = [];
+        check result.forEach(function(repository:BikeOptionalized bike) {
+            bikeList.push(bike);
+        });
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Successfully retrieved bike details",
+            data: bikeList
+        };
+    }
+
+    resource function put update\-bike\-station/[string bikeId](string stationId) returns Response|error {
+        log:printInfo("Received request: PUT /update-bike-station/" + bikeId);
+
+        //implement the logic for this
+        repository:Bike result = check sClient->/bikes/[bikeId].put({
+            stationId: stationId
+        });
+        return {
+            statusCode: http:STATUS_OK,
+            message: "Successfully updated bike station",
+            data: result
+        };
+    }
+    
 }
