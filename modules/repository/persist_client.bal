@@ -11,6 +11,7 @@ import ballerinax/postgresql;
 import ballerinax/postgresql.driver as _;
 
 const BIKE = "bikes";
+const STATION = "stations";
 
 public isolated client class Client {
     *persist:AbstractPersistClient;
@@ -25,6 +26,7 @@ public isolated client class Client {
             tableName: "bike",
             fieldMetadata: {
                 bikeId: {columnName: "bikeId"},
+                stationId: {columnName: "stationId"},
                 addedById: {columnName: "addedById"},
                 isActive: {columnName: "isActive"},
                 isFlaggedForMaintenance: {columnName: "isFlaggedForMaintenance"},
@@ -37,9 +39,28 @@ public isolated client class Client {
                 description: {columnName: "description"},
                 createdAt: {columnName: "createdAt"},
                 updatedAt: {columnName: "updatedAt"},
-                isReserved: {columnName: "isReserved"}
+                isReserved: {columnName: "isReserved"},
+                batteryLevel: {columnName: "batteryLevel"}
             },
             keyFields: ["bikeId"]
+        },
+        [STATION]: {
+            entityName: "Station",
+            tableName: "station",
+            fieldMetadata: {
+                stationId: {columnName: "stationId"},
+                name: {columnName: "name"},
+                address: {columnName: "address"},
+                description: {columnName: "description"},
+                imageUrl: {columnName: "imageUrl"},
+                phone: {columnName: "phone"},
+                latitude: {columnName: "latitude"},
+                longitude: {columnName: "longitude"},
+                operatingHours: {columnName: "operatingHours"},
+                createdAt: {columnName: "createdAt"},
+                updatedAt: {columnName: "updatedAt"}
+            },
+            keyFields: ["stationId"]
         }
     };
 
@@ -68,7 +89,10 @@ public isolated client class Client {
                 }
             }
         }
-        self.persistClients = {[BIKE]: check new (dbClient, self.metadata.get(BIKE).cloneReadOnly(), psql:POSTGRESQL_SPECIFICS)};
+        self.persistClients = {
+            [BIKE]: check new (dbClient, self.metadata.get(BIKE).cloneReadOnly(), psql:POSTGRESQL_SPECIFICS),
+            [STATION]: check new (dbClient, self.metadata.get(STATION).cloneReadOnly(), psql:POSTGRESQL_SPECIFICS)
+        };
     }
 
     isolated resource function get bikes(BikeTargetType targetType = <>, sql:ParameterizedQuery whereClause = ``, sql:ParameterizedQuery orderByClause = ``, sql:ParameterizedQuery limitClause = ``, sql:ParameterizedQuery groupByClause = ``) returns stream<targetType, persist:Error?> = @java:Method {
@@ -107,6 +131,45 @@ public isolated client class Client {
             sqlClient = self.persistClients.get(BIKE);
         }
         _ = check sqlClient.runDeleteQuery(bikeId);
+        return result;
+    }
+
+    isolated resource function get stations(StationTargetType targetType = <>, sql:ParameterizedQuery whereClause = ``, sql:ParameterizedQuery orderByClause = ``, sql:ParameterizedQuery limitClause = ``, sql:ParameterizedQuery groupByClause = ``) returns stream<targetType, persist:Error?> = @java:Method {
+        'class: "io.ballerina.stdlib.persist.sql.datastore.PostgreSQLProcessor",
+        name: "query"
+    } external;
+
+    isolated resource function get stations/[string stationId](StationTargetType targetType = <>) returns targetType|persist:Error = @java:Method {
+        'class: "io.ballerina.stdlib.persist.sql.datastore.PostgreSQLProcessor",
+        name: "queryOne"
+    } external;
+
+    isolated resource function post stations(StationInsert[] data) returns string[]|persist:Error {
+        psql:SQLClient sqlClient;
+        lock {
+            sqlClient = self.persistClients.get(STATION);
+        }
+        _ = check sqlClient.runBatchInsertQuery(data);
+        return from StationInsert inserted in data
+            select inserted.stationId;
+    }
+
+    isolated resource function put stations/[string stationId](StationUpdate value) returns Station|persist:Error {
+        psql:SQLClient sqlClient;
+        lock {
+            sqlClient = self.persistClients.get(STATION);
+        }
+        _ = check sqlClient.runUpdateQuery(stationId, value);
+        return self->/stations/[stationId].get();
+    }
+
+    isolated resource function delete stations/[string stationId]() returns Station|persist:Error {
+        Station result = check self->/stations/[stationId].get();
+        psql:SQLClient sqlClient;
+        lock {
+            sqlClient = self.persistClients.get(STATION);
+        }
+        _ = check sqlClient.runDeleteQuery(stationId);
         return result;
     }
 

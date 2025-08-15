@@ -7,6 +7,7 @@ import ballerina/time;
 
 public type Bike record {|
     readonly string bikeId;
+    string stationId;
     string addedById;
     boolean isActive;
     boolean isFlaggedForMaintenance;
@@ -20,10 +21,12 @@ public type Bike record {|
     time:Civil createdAt;
     time:Civil updatedAt;
     boolean isReserved;
+    int batteryLevel;
 |};
 
 public type BikeOptionalized record {|
     string bikeId?;
+    string stationId?;
     string addedById?;
     boolean isActive?;
     boolean isFlaggedForMaintenance?;
@@ -37,6 +40,7 @@ public type BikeOptionalized record {|
     time:Civil createdAt?;
     time:Civil updatedAt?;
     boolean isReserved?;
+    int batteryLevel?;
 |};
 
 public type BikeTargetType typedesc<BikeOptionalized>;
@@ -44,6 +48,7 @@ public type BikeTargetType typedesc<BikeOptionalized>;
 public type BikeInsert Bike;
 
 public type BikeUpdate record {|
+    string stationId?;
     string addedById?;
     boolean isActive?;
     boolean isFlaggedForMaintenance?;
@@ -57,5 +62,51 @@ public type BikeUpdate record {|
     time:Civil createdAt?;
     time:Civil updatedAt?;
     boolean isReserved?;
+    int batteryLevel?;
+|};
+
+public type Station record {|
+    readonly string stationId;
+    string name;
+    string address;
+    string description;
+    string imageUrl;
+    string phone;
+    string latitude;
+    string longitude;
+    string operatingHours;
+    time:Civil createdAt;
+    time:Civil updatedAt;
+|};
+
+public type StationOptionalized record {|
+    string stationId?;
+    string name?;
+    string address?;
+    string description?;
+    string imageUrl?;
+    string phone?;
+    string latitude?;
+    string longitude?;
+    string operatingHours?;
+    time:Civil createdAt?;
+    time:Civil updatedAt?;
+|};
+
+public type StationTargetType typedesc<StationOptionalized>;
+
+public type StationInsert Station;
+
+public type StationUpdate record {|
+    string name?;
+    string address?;
+    string description?;
+    string imageUrl?;
+    string phone?;
+    string latitude?;
+    string longitude?;
+    string operatingHours?;
+    time:Civil createdAt?;
+    time:Civil updatedAt?;
 |};
 
