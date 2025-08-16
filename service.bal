@@ -6,9 +6,25 @@ import ballerina/uuid;
 import ballerina/time;
 import ballerina/sql;
 
+configurable string pub_key = ?;
 
 final repository:Client sClient = check new();
 
+@http:ServiceConfig{
+     auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: ["user"]
+        }
+    ]
+}
 service /bike\-service on new http:Listener(8090) {
 
     resource function get bikes() returns Response|error{
