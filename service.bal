@@ -28,7 +28,7 @@ final repository:Client sClient = check new();
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["*"],
-        allowMethods: ["GET", "POST", "OPTIONS"],
+        allowMethods: ["GET", "POST","PUT", "OPTIONS"],
         allowHeaders: ["Content-Type", "Stripe-Signature"]
     }
 }
