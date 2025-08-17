@@ -24,7 +24,7 @@ jobs:
 
       # Step 3: Build Ballerina service (produces Docker image)
       - name: Build bike_service
-        run: bal build ./bike_service
+        run: bal build ./bike-service
 
       # Step 4: Log in to Docker Hub
       - name: Log in to Docker Hub
