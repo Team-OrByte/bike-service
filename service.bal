@@ -25,6 +25,13 @@ final repository:Client sClient = check new();
 //         }
 //     ]
 // }
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["*"],
+        allowMethods: ["GET", "POST", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Stripe-Signature"]
+    }
+}
 service /bike\-service on new http:Listener(8090) {
 
     resource function get bikes() returns Response|error{
