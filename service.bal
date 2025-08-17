@@ -6,9 +6,32 @@ import ballerina/uuid;
 import ballerina/time;
 import ballerina/sql;
 
+// configurable string pub_key = ?;
 
 final repository:Client sClient = check new();
 
+// @http:ServiceConfig{
+//      auth: [
+//         {
+//             jwtValidatorConfig: {
+//                 issuer: "Orbyte",
+//                 audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+//                 signatureConfig: {
+//                     certFile: pub_key
+//                 },
+//                 scopeKey: "scp"
+//             },
+//             scopes: ["user"]
+//         }
+//     ]
+// }
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["*"],
+        allowMethods: ["GET", "POST","PUT", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Stripe-Signature"]
+    }
+}
 service /bike\-service on new http:Listener(8090) {
 
     resource function get bikes() returns Response|error{
@@ -267,6 +290,35 @@ service /bike\-service on new http:Listener(8090) {
             statusCode: http:STATUS_OK,
             message: "Successfully retrieved bike details",
             data: bikeList
+        };
+    }
+
+    //add a station
+    resource function post add\-station(@http:Payload repository:StationOptionalized station) returns Response|error {
+        log:printInfo("Received request: POST /add-station");
+        string generatedBikeId = uuid:createType1AsString();
+        time:Civil currentTime = time:utcToCivil(time:utcNow());
+
+        repository:Station newStation = {
+            stationId: generatedBikeId,
+            name: <string>station.name,
+            address: <string>station.address,
+            description: <string>station.description,
+            createdAt: currentTime,
+            updatedAt: currentTime,
+            imageUrl: <string>station.imageUrl,
+            phone: <string>station.phone,
+            latitude: <string>station.latitude,
+            longitude: <string>station.longitude,
+            operatingHours: <string>station.operatingHours
+        };
+
+        string[] result = check sClient->/stations.post([newStation]);
+
+        return {
+            statusCode: http:STATUS_CREATED,
+            message: "Successfully added station",
+            data: result
         };
     }
 
