@@ -18,9 +18,11 @@ jobs:
 
       # Step 2: Set up Ballerina
       - name: Set up Ballerina
-        uses: ballerina-platform/setup-ballerina@v1
+      - uses: ballerina-platform/setup-ballerina@v1
+        name: Install Ballerina
         with:
-          version: '2201.9.0'
+          version: 2201.3.2
+      - run: bal version
 
       # Step 3: Build Ballerina service (produces Docker image)
       - name: Build bike_service
