@@ -466,18 +466,66 @@ Retrieve all bike stations.
     {
       "stationId": "station-001",
       "name": "Central Park Station",
+      "address": "Central Park, New York, NY",
+      "description": "Main station in Central Park area",
+      "imageUrl": "https://example.com/station.jpg",
+      "phone": "+1-555-0123",
       "latitude": "40.7829",
       "longitude": "-73.9654",
-      "address": "Central Park, New York, NY",
-      "capacity": 20,
-      "availableSlots": 5,
-      "isActive": true
+      "operatingHours": "06:00 - 22:00",
+      "createdAt": "2025-08-17T10:30:00Z",
+      "updatedAt": "2025-08-17T10:30:00Z"
     }
   ]
 }
 ```
 
-### 13. Get Nearby Stations
+### 13. Add New Station
+
+Add a new bike station to the system.
+
+**Endpoint:** `POST /add-station`
+
+**Request Body:**
+
+```json
+{
+  "name": "Central Park Station",
+  "address": "Central Park, New York, NY",
+  "description": "Main station in Central Park area",
+  "imageUrl": "https://example.com/station.jpg",
+  "phone": "+1-555-0123",
+  "latitude": "40.7829",
+  "longitude": "-73.9654",
+  "operatingHours": "06:00 - 22:00"
+}
+```
+
+**Required Fields:**
+
+- `name` (string): Name of the station
+- `address` (string): Physical address of the station
+- `latitude` (string): Latitude coordinate
+- `longitude` (string): Longitude coordinate
+
+**Optional Fields:**
+
+- `description` (string): Description of the station
+- `imageUrl` (string): URL to station image
+- `phone` (string): Contact phone number
+- `operatingHours` (string): Operating hours of the station
+
+**Response (Success):**
+
+```json
+{
+  "statusCode": 201,
+  "message": "Successfully added station",
+  "data": ["123e4567-e89b-12d3-a456-426614174000"]
+}
+```
+
+### 14. Get Nearby Stations
 
 Retrieve stations within a specified radius of given coordinates.
 
@@ -504,15 +552,18 @@ Retrieve stations within a specified radius of given coordinates.
       "latitude": "40.7829",
       "longitude": "-73.9654",
       "address": "Central Park, New York, NY",
-      "capacity": 20,
-      "availableSlots": 5,
-      "isActive": true
+      "description": "Main station in Central Park area",
+      "imageUrl": "https://example.com/station.jpg",
+      "phone": "+1-555-0123",
+      "operatingHours": "06:00 - 22:00",
+      "createdAt": "2025-08-17T10:30:00Z",
+      "updatedAt": "2025-08-17T10:30:00Z"
     }
   ]
 }
 ```
 
-### 14. Get Bikes by Station
+### 15. Get Bikes by Station
 
 Retrieve all bikes at a specific station with pagination.
 
@@ -558,7 +609,7 @@ Retrieve all bikes at a specific station with pagination.
 }
 ```
 
-### 15. Update Bike Station
+### 16. Update Bike Station
 
 Update the station location of a bike.
 
@@ -637,12 +688,15 @@ Update the station location of a bike.
 {
   "stationId": "string",
   "name": "string",
+  "address": "string",
+  "description": "string",
+  "imageUrl": "string",
+  "phone": "string",
   "latitude": "string",
   "longitude": "string",
-  "address": "string",
-  "capacity": "integer",
-  "availableSlots": "integer",
-  "isActive": "boolean"
+  "operatingHours": "string",
+  "createdAt": "string (ISO 8601 datetime)",
+  "updatedAt": "string (ISO 8601 datetime)"
 }
 ```
 
@@ -694,6 +748,31 @@ const reserveResponse = await fetch(
   }
 );
 const reserveData = await reserveResponse.json();
+
+// Add a new station
+const newStation = {
+  name: 'Central Park Station',
+  address: 'Central Park, New York, NY',
+  description: 'Main station in Central Park area',
+  imageUrl: 'https://example.com/station.jpg',
+  phone: '+1-555-0123',
+  latitude: '40.7829',
+  longitude: '-73.9654',
+  operatingHours: '06:00 - 22:00',
+};
+
+const stationResponse = await fetch(
+  'http://localhost:8090/bike-service/add-station',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer YOUR_JWT_TOKEN',
+    },
+    body: JSON.stringify(newStation),
+  }
+);
+const stationData = await stationResponse.json();
 ```
 
 ### cURL Examples
@@ -720,6 +799,21 @@ curl -X POST "http://localhost:8090/bike-service/create-bike" \
 # Reserve a bike
 curl -X PUT "http://localhost:8090/bike-service/reserve-bike/123e4567-e89b-12d3-a456-426614174000" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Add a new station
+curl -X POST "http://localhost:8090/bike-service/add-station" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "Central Park Station",
+    "address": "Central Park, New York, NY",
+    "description": "Main station in Central Park area",
+    "imageUrl": "https://example.com/station.jpg",
+    "phone": "+1-555-0123",
+    "latitude": "40.7829",
+    "longitude": "-73.9654",
+    "operatingHours": "06:00 - 22:00"
+  }'
 ```
 
 ## Notes for Frontend Developers
