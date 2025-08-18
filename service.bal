@@ -6,7 +6,7 @@ import ballerina/uuid;
 import ballerina/time;
 import ballerina/sql;
 
-// configurable string pub_key = ?;
+configurable string pub_key = ?;
 
 final repository:Client sClient = check new();
 
@@ -28,9 +28,22 @@ final repository:Client sClient = check new();
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["*"],
-        allowMethods: ["GET", "POST","PUT", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Stripe-Signature"]
-    }
+        allowMethods: ["POST", "PUT", "GET", "POST", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Access-Control-Allow-Origin", "X-Service-Name"]
+    },
+    auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "user"
+        }
+    ]
 }
 service /bike\-service on new http:Listener(8090) {
 
