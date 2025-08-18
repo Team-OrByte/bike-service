@@ -10,40 +10,12 @@ configurable string pub_key = ?;
 
 final repository:Client sClient = check new();
 
-// @http:ServiceConfig{
-//      auth: [
-//         {
-//             jwtValidatorConfig: {
-//                 issuer: "Orbyte",
-//                 audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
-//                 signatureConfig: {
-//                     certFile: pub_key
-//                 },
-//                 scopeKey: "scp"
-//             },
-//             scopes: ["user"]
-//         }
-//     ]
-// }
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["*"],
         allowMethods: ["POST", "PUT", "GET", "POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Access-Control-Allow-Origin", "X-Service-Name"]
-    },
-    auth: [
-        {
-            jwtValidatorConfig: {
-                issuer: "Orbyte",
-                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
-                signatureConfig: {
-                    certFile: pub_key
-                },
-                scopeKey: "scp"
-            },
-            scopes: "user"
-        }
-    ]
+    }
 }
 service /bike\-service on new http:Listener(8090) {
 
@@ -91,10 +63,37 @@ service /bike\-service on new http:Listener(8090) {
         
     }
 
-    resource function post create\-bike(@http:Payload repository:BikeOptionalized bike) returns Response|error {
+    @http:ResourceConfig {
+            auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: "Orbyte",
+                    audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                    signatureConfig: {
+                        certFile: pub_key
+                    },
+                    scopeKey: "scp"
+                },
+                scopes: "admin"
+            }
+        ]
+    }
+    resource function post create\-bike(@http:Header string Authorization,@http:Payload repository:BikeOptionalized bike) returns Response|error {
 
         string generatedBikeId = uuid:createType1AsString();
-        string addedById = "7f34d7a7-c249-44c9-add1-50e79dda8703";
+
+        Claims claims = check extractClaims(Authorization);
+        string userId;
+        if claims.userId is string {
+            userId = <string>claims.userId;
+        } else {
+            return {
+                statusCode: http:STATUS_UNAUTHORIZED,
+                message: "Unauthorized"
+            };
+        }
+
+        string addedById = userId;
         
         time:Civil currentTime = time:utcToCivil(time:utcNow());
 
@@ -136,6 +135,21 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "admin"
+        }
+    ]
+    }
     resource function put update\-bike/[string bikeId](@http:Payload repository:BikeUpdate bikeUpdate) returns Response|error {
 
         log:printInfo("Received request: PUT /update-bike/" + bikeId);
@@ -155,6 +169,21 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "admin"
+        }
+    ]
+    }
     resource function delete delete\-bike/[string bikeId]() returns Response|error {
 
         log:printInfo("Received request: DELETE /delete-bike/" + bikeId);
@@ -169,6 +198,21 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "admin"
+        }
+    ]
+    }
     resource function put soft\-delete\-bike/[string bikeId]() returns Response | error {
 
         log:printInfo("Received request: PUT /soft-delete-bike/" + bikeId);
@@ -186,6 +230,21 @@ service /bike\-service on new http:Listener(8090) {
         
     }
 
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "admin"
+        }
+    ]
+    }
     resource function put restore\-bike/[string bikeId]() returns Response|error {
 
         log:printInfo("Received request: POST /restore-bike/" + bikeId);
@@ -230,6 +289,21 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "user"
+        }
+    ]
+    }
     resource function put reserve\-bike/[string bikeId]() returns Response|error {
         log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
 
@@ -265,11 +339,27 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
-    resource function put release\-bike/[string bikeId]() returns Response | error{
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "user"
+        }
+    ]
+    }
+    resource function put release\-bike/[string bikeId](string endLocation) returns Response | error{
         log:printInfo("Received request: PUT /reserve-bike/" + bikeId);
 
         repository:Bike result = check sClient->/bikes/[bikeId].put({
-            isReserved: false
+            isReserved: false,
+            stationId: endLocation
         });
 
         log:printInfo("Successfully released bike with ID: " + bikeId);
@@ -307,6 +397,21 @@ service /bike\-service on new http:Listener(8090) {
     }
 
     //add a station
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "admin"
+        }
+    ]
+    }
     resource function post add\-station(@http:Payload repository:StationOptionalized station) returns Response|error {
         log:printInfo("Received request: POST /add-station");
         string generatedBikeId = uuid:createType1AsString();
@@ -388,6 +493,21 @@ service /bike\-service on new http:Listener(8090) {
         };
     }
 
+    @http:ResourceConfig {
+        auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: "Orbyte",
+                audience: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa",
+                signatureConfig: {
+                    certFile: pub_key
+                },
+                scopeKey: "scp"
+            },
+            scopes: "user"
+        }
+    ]
+    }
     resource function put update\-bike\-station/[string bikeId](string stationId) returns Response|error {
         log:printInfo("Received request: PUT /update-bike-station/" + bikeId);
 
