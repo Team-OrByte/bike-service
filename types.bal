@@ -9,3 +9,9 @@ type BikeStatus record {|
     boolean isFlaggedForMaintenance;
     boolean isReserved;
 |};
+
+public type Claims record {|
+    string? userId;
+    string? email;
+    string? role;
+|};
