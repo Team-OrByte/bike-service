@@ -473,7 +473,7 @@ service /bike\-service on new http:Listener(8090) {
     resource function get bikes\-by\-station/[string stationId]( int pageSize = 50, int pageOffset = 0) returns Response|error {
         log:printInfo("Received request: GET /bikes-by-station");
         //implement the logic for this
-        sql:ParameterizedQuery whereClause = `"stationId" = ${stationId}`;
+        sql:ParameterizedQuery whereClause = `"stationId" = ${stationId} and "isActive" = true and "isReserved" = false`;
         sql:ParameterizedQuery orderByClause = `"createdAt" `;
         sql:ParameterizedQuery limitClause = `${pageSize} OFFSET ${pageOffset}`;
         stream<repository:BikeOptionalized, persist:Error?> result = sClient->/bikes(
