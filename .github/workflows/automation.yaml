@@ -15,7 +15,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: thetharz/bike-service
+  IMAGE_NAME: thetharz/orbyte_bike-service
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
