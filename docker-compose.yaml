@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   bike-service-db:
     image: postgres:15
@@ -14,18 +12,32 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bike_service_user -d bikes_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   bike-service:
-    image: bike_service:latest
+    build: .
+    container_name: bike_service
+    restart: unless-stopped
     depends_on:
-      - bike-service-db
+      bike-service-db:
+        condition: service_started
     ports:
       - '8090:8090'
     volumes:
       - ./Config.toml:/app/Config.toml
       - ./logs:/app/logs
+      - ./public.crt:/app/public.crt
     environment:
       BAL_CONFIG_FILES: /app/Config.toml
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8090/bike-service/bikes']
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   pgdata:
