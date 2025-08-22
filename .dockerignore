@@ -1,0 +1,31 @@
+# Exclude configuration files (will be provided at runtime)
+Config.toml
+*.crt
+*.key
+
+# Exclude build artifacts and cache
+target/
+.ballerina/
+
+# Exclude logs
+logs/
+*.log
+
+# Exclude Docker files
+Dockerfile
+docker-compose.yaml
+.dockerignore
+
+# Exclude version control
+.git/
+.gitignore
+
+# Exclude documentation
+README.md
+Module.md
+
+# Exclude test files
+tests/
+
+# Exclude database files
+db/
