@@ -487,6 +487,11 @@ dependencies = [
 ]
 modules = [
 	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service"},
-	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.repository"}
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.auth"},
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.bike_service"},
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.common"},
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.repository"},
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.ride_events"},
+	{org = "tharindu", packageName = "bike_service", moduleName = "bike_service.station_service"}
 ]
 
