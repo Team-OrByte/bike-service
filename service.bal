@@ -5,8 +5,10 @@ import ballerina/persist;
 import ballerina/uuid;
 import ballerina/time;
 import ballerina/sql;
+import ballerinax/kafka;
 
 configurable string pub_key = ?;
+configurable string kafkaBootstrapServers = ?;
 
 final repository:Client sClient = check new();
 
@@ -523,3 +525,122 @@ service /bike\-service on new http:Listener(8090) {
     }
     
 }
+
+//implement the kafka listeners for ride events
+
+kafka:ConsumerConfiguration consumerConfiguration = {
+    groupId: "ride-events",
+    topics: ["ride-events"],
+    pollingInterval: 1,
+    autoCommit: false
+};
+
+listener kafka:Listener kafkaListener = new (kafkaBootstrapServers,consumerConfiguration);
+
+service on kafkaListener {
+    remote function onConsumerRecord(kafka:Caller caller, kafka:AnydataConsumerRecord[] records) returns error? {
+        
+        foreach kafka:AnydataConsumerRecord kafkaRecord in records {
+            anydata messageValue = kafkaRecord.value;
+            string messageString;
+            
+            if messageValue is byte[] {
+                messageString = check string:fromBytes(messageValue);
+            } else if messageValue is string {
+                messageString = messageValue;
+            } else {
+                messageString = messageValue.toString();
+            }
+            
+            log:printInfo("Received Kafka message: " + messageString);
+            
+            // Parse the JSON message to RideEvent
+            json messageJson = check messageString.fromJsonString();
+            RideEvent rideEvent = check messageJson.cloneWithType(RideEvent);
+            
+            // Handle the ride event
+            error? result = handleRideEvent(rideEvent);
+            if result is error {
+                log:printError("Error handling ride event: " + result.message());
+                // Don't commit if there's an error
+                return result;
+            }
+        }
+        
+        // Commit the messages after successful processing
+        check caller->commit();
+        log:printInfo("Successfully committed Kafka messages");
+    }
+}
+
+// Function to handle different ride events
+function handleRideEvent(RideEvent rideEvent) returns error? {
+    match rideEvent.eventType {
+        RIDE_STARTED => {
+            log:printInfo("Ride started - User: " + rideEvent.userId + ", Bike: " + rideEvent.bikeId + ", Station: " + (rideEvent.startStation ?: "Unknown"));
+            // For ride started, we might want to ensure the bike is reserved
+            // This is typically handled by the reservation endpoint, but we can add validation here
+            return validateBikeReservation(rideEvent.bikeId);
+        }
+        RIDE_ENDED => {
+            log:printInfo("Ride ended - User: " + rideEvent.userId + ", Bike: " + rideEvent.bikeId + ", End Station: " + (rideEvent.endStation ?: "Unknown"));
+            // Release the bike and update its station
+            return releaseBikeAfterRide(rideEvent);
+        }
+    }
+}
+
+// Function to validate bike reservation
+function validateBikeReservation(string bikeId) returns error? {
+    repository:Bike|persist:Error bike = sClient->/bikes/[bikeId]();
+    
+    if bike is repository:Bike {
+        if !bike.isReserved {
+            log:printWarn("Bike " + bikeId + " is not reserved but ride started");
+            // Optionally, we could reserve it here
+            repository:Bike _ = check sClient->/bikes/[bikeId].put({
+                isReserved: true
+            });
+            log:printInfo("Auto-reserved bike " + bikeId + " for active ride");
+        }
+    } else {
+        log:printError("Bike " + bikeId + " not found during ride start validation");
+        return error("Bike not found");
+    }
+}
+
+// Function to release bike after ride ends
+function releaseBikeAfterRide(RideEvent rideEvent) returns error? {
+    string bikeId = rideEvent.bikeId;
+    string? endStation = rideEvent.endStation;
+    
+    // Prepare update data
+    repository:BikeUpdate updateData = {
+        isReserved: false
+    };
+    
+    // If end station is provided, update the bike's station
+    if endStation is string && endStation.trim() != "" {
+        updateData.stationId = endStation;
+        log:printInfo("Releasing bike " + bikeId + " at station " + endStation);
+    } else {
+        log:printInfo("Releasing bike " + bikeId + " (station unchanged)");
+    }
+    
+    // Update the bike in the database
+    repository:Bike|persist:Error result = sClient->/bikes/[bikeId].put(updateData);
+    
+    if result is repository:Bike {
+        log:printInfo("Successfully released bike " + bikeId + " after ride completion");
+        
+        // Log ride details if available
+        if rideEvent.duration is int && rideEvent.fare is decimal {
+            log:printInfo("Ride details - Duration: " + rideEvent.duration.toString() + " minutes, Fare: $" + rideEvent.fare.toString());
+        }
+    } else {
+        log:printError("Failed to release bike " + bikeId + ": " + result.message());
+        return error("Failed to release bike: " + result.message());
+    }
+}
+
+
