@@ -1,36 +1,64 @@
-# Bike Service API Documentation
+# Bike Service
 
-A comprehensive bike sharing service API built with Ballerina that provides endpoints for managing bikes, stations, and reservations.
+[![CI](https://github.com/Team-OrByte/bike-service/actions/workflows/automation.yaml/badge.svg)](https://github.com/Team-OrByte/bike-service/actions/workflows/automation.yaml)
+[![Docker Image](https://img.shields.io/badge/docker-thetharz%2Forbyte__bike__service-blue)](https://hub.docker.com/r/thetharz/orbyte_bike_service)
 
-## Base URL
+A comprehensive bike-sharing service built with Ballerina that provides bike and station management functionality with real-time event processing capabilities. This service enables users to discover, reserve, and manage electric bikes across multiple stations while providing administrative controls for fleet management.
 
+## How Ballerina is Used
+
+This project leverages Ballerina's cloud-native capabilities extensively:
+
+- **HTTP Services**: RESTful API endpoints for bike and station management using Ballerina's built-in HTTP service capabilities
+- **Data Persistence**: Integration with PostgreSQL using Ballerina's `persist` library for data access layer generation
+- **Event-Driven Architecture**: Apache Kafka integration for real-time ride event processing using `ballerinax/kafka`
+- **JWT Authentication**: Secure API endpoints using Ballerina's built-in JWT validation with role-based access control
+- **Configuration Management**: Environment-specific configurations using Ballerina's configurable variables
+- **Observability**: Built-in logging, tracing, and monitoring capabilities
+- **Microservices Architecture**: Modular service design with separate modules for bikes, stations, authentication, and events
+
+## Configuration Example
+
+Create a `Config.toml` file in the project root with the following structure:
+
+```toml
+# JWT Public Key Path
+pub_key = "./public.crt"
+
+# Kafka Configuration
+kafkaBootstrapServers = "kafka:9092"
+
+# Logging Configuration
+[ballerina.log]
+level = "DEBUG"
+format = "json"
+
+# Database Configuration
+[bike_service.repository]
+host = "bike_service_db"  # Use "localhost" for local development
+port = 5432
+user = "bike_service_user"
+password = "your_database_password"
+database = "bikes_db"
 ```
-http://localhost:8090/bike-service
-```
 
-## Authentication
+For local development, update the host values:
 
-All endpoints require JWT authentication with the following configuration:
-
-- **Issuer**: Orbyte
-- **Audience**: vEwzbcasJVQm1jVYHUHCjhxZ4tYa
-- **Scope**: user
-
-Include the JWT token in the Authorization header:
-
-```
-Authorization: Bearer <your-jwt-token>
+```toml
+[bike_service.repository]
+host = "localhost"
 ```
 
 ## API Endpoints
 
-### 1. Get All Bikes
+### Bike Management
 
-Retrieve all bikes in the system.
+#### Get All Bikes
 
-**Endpoint:** `GET /bikes`
-
-**Response:**
+- **Method**: `GET`
+- **Path**: `/bike-service/bikes`
+- **Auth**: None
+- **Response**:
 
 ```json
 {
@@ -38,655 +66,120 @@ Retrieve all bikes in the system.
   "message": "Bikes retrieved successfully",
   "data": [
     {
-      "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-      "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-      "modelName": "City Cruiser",
-      "brand": "EcoBike",
+      "bikeId": "string",
+      "stationId": "string",
+      "modelName": "string",
+      "brand": "string",
       "maxSpeed": 25,
       "rangeKm": 50,
-      "weightKg": 20,
-      "imageUrl": "https://example.com/bike.jpg",
-      "description": "Comfortable city bike",
-      "createdAt": "2025-08-16T10:30:00Z",
-      "updatedAt": "2025-08-16T10:30:00Z",
+      "batteryLevel": 85,
       "isActive": true,
       "isFlaggedForMaintenance": false,
-      "isReserved": false,
-      "batteryLevel": 85,
-      "stationId": "station-001"
+      "isReserved": false
     }
   ]
 }
 ```
 
-### 2. Get Single Bike Details
-
-Retrieve details for a specific bike by ID.
-
-**Endpoint:** `GET /bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Response (Success):**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike details retrieved successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-    "modelName": "City Cruiser",
-    "brand": "EcoBike",
-    "maxSpeed": 25,
-    "rangeKm": 50,
-    "weightKg": 20,
-    "imageUrl": "https://example.com/bike.jpg",
-    "description": "Comfortable city bike",
-    "createdAt": "2025-08-16T10:30:00Z",
-    "updatedAt": "2025-08-16T10:30:00Z",
-    "isActive": true,
-    "isFlaggedForMaintenance": false,
-    "isReserved": false,
-    "batteryLevel": 85,
-    "stationId": "station-001"
-  }
-}
-```
-
-**Response (Not Found):**
-
-```json
-{
-  "statusCode": 404,
-  "message": "Bike not found"
-}
-```
-
-### 3. Create New Bike
-
-Add a new bike to the system.
-
-**Endpoint:** `POST /create-bike`
-
-**Request Body:**
-
-```json
-{
-  "modelName": "City Cruiser",
-  "brand": "EcoBike",
-  "maxSpeed": 25,
-  "rangeKm": 50,
-  "weightKg": 20,
-  "imageUrl": "https://example.com/bike.jpg",
-  "description": "Comfortable city bike",
-  "batteryLevel": 100,
-  "stationId": "station-001"
-}
-```
-
-**Required Fields:**
-
-- `modelName` (string)
-- `brand` (string)
-- `maxSpeed` (integer)
-- `rangeKm` (integer)
-- `weightKg` (integer)
-
-**Optional Fields:**
-
-- `imageUrl` (string)
-- `description` (string)
-- `batteryLevel` (integer)
-- `stationId` (string)
-
-**Response (Success):**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike created successfully",
-  "data": ["123e4567-e89b-12d3-a456-426614174000"]
-}
-```
-
-**Response (Bad Request):**
-
-```json
-{
-  "statusCode": 400,
-  "message": "Missing required fields for bike creation"
-}
-```
-
-### 4. Update Bike
-
-Update an existing bike's information.
-
-**Endpoint:** `PUT /update-bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Request Body (all fields optional):**
-
-```json
-{
-  "modelName": "Updated Model",
-  "brand": "Updated Brand",
-  "maxSpeed": 30,
-  "rangeKm": 60,
-  "weightKg": 22,
-  "imageUrl": "https://example.com/updated-bike.jpg",
-  "description": "Updated description",
-  "isActive": true,
-  "isFlaggedForMaintenance": false,
-  "isReserved": false,
-  "batteryLevel": 90,
-  "stationId": "station-002"
-}
-```
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike updated successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-    "modelName": "Updated Model",
-    "brand": "Updated Brand",
-    "maxSpeed": 30,
-    "rangeKm": 60,
-    "weightKg": 22,
-    "imageUrl": "https://example.com/updated-bike.jpg",
-    "description": "Updated description",
-    "createdAt": "2025-08-16T10:30:00Z",
-    "updatedAt": "2025-08-16T11:45:00Z",
-    "isActive": true,
-    "isFlaggedForMaintenance": false,
-    "isReserved": false,
-    "batteryLevel": 90,
-    "stationId": "station-002"
-  }
-}
-```
-
-### 5. Delete Bike (Hard Delete)
-
-Permanently delete a bike from the system.
-
-**Endpoint:** `DELETE /delete-bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike deleted successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-    "modelName": "City Cruiser",
-    "brand": "EcoBike",
-    "maxSpeed": 25,
-    "rangeKm": 50,
-    "weightKg": 20,
-    "imageUrl": "https://example.com/bike.jpg",
-    "description": "Comfortable city bike",
-    "createdAt": "2025-08-16T10:30:00Z",
-    "updatedAt": "2025-08-16T10:30:00Z",
-    "isActive": true,
-    "isFlaggedForMaintenance": false,
-    "isReserved": false,
-    "batteryLevel": 85,
-    "stationId": "station-001"
-  }
-}
-```
-
-### 6. Soft Delete Bike
-
-Mark a bike as inactive without permanently deleting it.
-
-**Endpoint:** `PUT /soft-delete-bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike soft deleted successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "isActive": false,
-    "updatedAt": "2025-08-16T11:45:00Z"
-  }
-}
-```
-
-### 7. Restore Bike
-
-Restore a soft-deleted bike by marking it as active.
-
-**Endpoint:** `PUT /restore-bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike restored successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "isActive": true,
-    "updatedAt": "2025-08-16T11:50:00Z"
-  }
-}
-```
-
-### 8. Get Active Bikes
-
-Retrieve all active bikes with pagination.
-
-**Endpoint:** `GET /active-bikes`
-
-**Query Parameters:**
-
-- `pageSize` (optional, default: 50): Number of bikes per page
-- `pageOffset` (optional, default: 0): Number of bikes to skip
-
-**Example:** `GET /active-bikes?pageSize=20&pageOffset=40`
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Successfully retrieved bike details",
-  "data": [
-    {
-      "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-      "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-      "modelName": "City Cruiser",
-      "brand": "EcoBike",
-      "maxSpeed": 25,
-      "rangeKm": 50,
-      "weightKg": 20,
-      "imageUrl": "https://example.com/bike.jpg",
-      "description": "Comfortable city bike",
-      "createdAt": "2025-08-16T10:30:00Z",
-      "updatedAt": "2025-08-16T10:30:00Z",
-      "isActive": true,
-      "isFlaggedForMaintenance": false,
-      "isReserved": false,
-      "batteryLevel": 85,
-      "stationId": "station-001"
-    }
-  ]
-}
-```
-
-### 9. Reserve Bike
-
-Reserve a bike for use.
-
-**Endpoint:** `PUT /reserve-bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Response (Success):**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike reserved successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "isReserved": true,
-    "updatedAt": "2025-08-16T12:00:00Z"
-  }
-}
-```
-
-**Response (Already Reserved):**
-
-```json
-{
-  "statusCode": 400,
-  "message": "Bike is already reserved"
-}
-```
-
-**Response (Bike Unavailable):**
-
-```json
-{
-  "statusCode": 400,
-  "message": "Bike is deleted or under maintenance"
-}
-```
-
-### 10. Release Bike
-
-Release a reserved bike.
-
-**Endpoint:** `PUT /release-bike/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Bike released successfully",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "isReserved": false,
-    "updatedAt": "2025-08-16T12:30:00Z"
-  }
-}
-```
-
-### 11. Get Unreserved Bikes
-
-Retrieve all unreserved bikes with pagination.
-
-**Endpoint:** `GET /unreserved-bikes`
-
-**Query Parameters:**
-
-- `pageSize` (optional, default: 50): Number of bikes per page
-- `pageOffset` (optional, default: 0): Number of bikes to skip
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Successfully retrieved bike details",
-  "data": [
-    {
-      "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-      "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-      "modelName": "City Cruiser",
-      "brand": "EcoBike",
-      "maxSpeed": 25,
-      "rangeKm": 50,
-      "weightKg": 20,
-      "imageUrl": "https://example.com/bike.jpg",
-      "description": "Comfortable city bike",
-      "createdAt": "2025-08-16T10:30:00Z",
-      "updatedAt": "2025-08-16T10:30:00Z",
-      "isActive": true,
-      "isFlaggedForMaintenance": false,
-      "isReserved": false,
-      "batteryLevel": 85,
-      "stationId": "station-001"
-    }
-  ]
-}
-```
-
-### 12. Get All Stations
-
-Retrieve all bike stations.
-
-**Endpoint:** `GET /stations`
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Successfully retrieved station details",
-  "data": [
-    {
-      "stationId": "station-001",
-      "name": "Central Park Station",
-      "address": "Central Park, New York, NY",
-      "description": "Main station in Central Park area",
-      "imageUrl": "https://example.com/station.jpg",
-      "phone": "+1-555-0123",
-      "latitude": "40.7829",
-      "longitude": "-73.9654",
-      "operatingHours": "06:00 - 22:00",
-      "createdAt": "2025-08-17T10:30:00Z",
-      "updatedAt": "2025-08-17T10:30:00Z"
-    }
-  ]
-}
-```
-
-### 13. Add New Station
-
-Add a new bike station to the system.
-
-**Endpoint:** `POST /add-station`
-
-**Request Body:**
-
-```json
-{
-  "name": "Central Park Station",
-  "address": "Central Park, New York, NY",
-  "description": "Main station in Central Park area",
-  "imageUrl": "https://example.com/station.jpg",
-  "phone": "+1-555-0123",
-  "latitude": "40.7829",
-  "longitude": "-73.9654",
-  "operatingHours": "06:00 - 22:00"
-}
-```
-
-**Required Fields:**
-
-- `name` (string): Name of the station
-- `address` (string): Physical address of the station
-- `latitude` (string): Latitude coordinate
-- `longitude` (string): Longitude coordinate
-
-**Optional Fields:**
-
-- `description` (string): Description of the station
-- `imageUrl` (string): URL to station image
-- `phone` (string): Contact phone number
-- `operatingHours` (string): Operating hours of the station
-
-**Response (Success):**
-
-```json
-{
-  "statusCode": 201,
-  "message": "Successfully added station",
-  "data": ["123e4567-e89b-12d3-a456-426614174000"]
-}
-```
-
-### 14. Get Nearby Stations
-
-Retrieve stations within a specified radius of given coordinates.
-
-**Endpoint:** `GET /nearby-stations`
-
-**Query Parameters:**
-
-- `latitude` (required): Latitude coordinate
-- `longitude` (required): Longitude coordinate
-- `radius` (required): Search radius in kilometers
-
-**Example:** `GET /nearby-stations?latitude=40.7829&longitude=-73.9654&radius=5`
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Successfully retrieved station details",
-  "data": [
-    {
-      "stationId": "station-001",
-      "name": "Central Park Station",
-      "latitude": "40.7829",
-      "longitude": "-73.9654",
-      "address": "Central Park, New York, NY",
-      "description": "Main station in Central Park area",
-      "imageUrl": "https://example.com/station.jpg",
-      "phone": "+1-555-0123",
-      "operatingHours": "06:00 - 22:00",
-      "createdAt": "2025-08-17T10:30:00Z",
-      "updatedAt": "2025-08-17T10:30:00Z"
-    }
-  ]
-}
-```
-
-### 15. Get Bikes by Station
-
-Retrieve all bikes at a specific station with pagination.
-
-**Endpoint:** `GET /bikes-by-station/{stationId}`
-
-**Parameters:**
-
-- `stationId` (path): ID of the station
-
-**Query Parameters:**
-
-- `pageSize` (optional, default: 50): Number of bikes per page
-- `pageOffset` (optional, default: 0): Number of bikes to skip
-
-**Example:** `GET /bikes-by-station/station-001?pageSize=10&pageOffset=0`
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Successfully retrieved bike details",
-  "data": [
-    {
-      "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-      "addedById": "7f34d7a7-c249-44c9-add1-50e79dda8703",
-      "modelName": "City Cruiser",
-      "brand": "EcoBike",
-      "maxSpeed": 25,
-      "rangeKm": 50,
-      "weightKg": 20,
-      "imageUrl": "https://example.com/bike.jpg",
-      "description": "Comfortable city bike",
-      "createdAt": "2025-08-16T10:30:00Z",
-      "updatedAt": "2025-08-16T10:30:00Z",
-      "isActive": true,
-      "isFlaggedForMaintenance": false,
-      "isReserved": false,
-      "batteryLevel": 85,
-      "stationId": "station-001"
-    }
-  ]
-}
-```
-
-### 16. Update Bike Station
-
-Update the station location of a bike.
-
-**Endpoint:** `PUT /update-bike-station/{bikeId}`
-
-**Parameters:**
-
-- `bikeId` (path): UUID of the bike
-
-**Query Parameters:**
-
-- `stationId` (required): ID of the new station
-
-**Example:** `PUT /update-bike-station/123e4567-e89b-12d3-a456-426614174000?stationId=station-002`
-
-**Response:**
-
-```json
-{
-  "statusCode": 200,
-  "message": "Successfully updated bike station",
-  "data": {
-    "bikeId": "123e4567-e89b-12d3-a456-426614174000",
-    "stationId": "station-002",
-    "updatedAt": "2025-08-16T13:00:00Z"
-  }
-}
-```
-
-## Error Responses
-
-### Common Error Codes
-
-- **400 Bad Request**: Invalid request data or business logic violation
-- **401 Unauthorized**: Missing or invalid JWT token
-- **404 Not Found**: Resource not found
-- **500 Internal Server Error**: Server-side error
-
-### Error Response Format
-
-```json
-{
-  "statusCode": 400,
-  "message": "Error description"
-}
-```
-
-## Data Models
-
-### Bike Object
-
-```json
-{
-  "bikeId": "string (UUID)",
-  "addedById": "string (UUID)",
-  "modelName": "string",
-  "brand": "string",
-  "maxSpeed": "integer (km/h)",
-  "rangeKm": "integer (km)",
-  "weightKg": "integer (kg)",
-  "imageUrl": "string (optional)",
-  "description": "string (optional)",
-  "createdAt": "string (ISO 8601 datetime)",
-  "updatedAt": "string (ISO 8601 datetime)",
-  "isActive": "boolean",
-  "isFlaggedForMaintenance": "boolean",
-  "isReserved": "boolean",
-  "batteryLevel": "integer (0-100)",
-  "stationId": "string"
-}
-```
-
-### Station Object
+#### Get Bike by ID
+
+- **Method**: `GET`
+- **Path**: `/bike-service/bike/{bikeId}`
+- **Auth**: None
+- **Response**: Single bike object with same structure as above
+
+#### Create Bike
+
+- **Method**: `POST`
+- **Path**: `/bike-service/create-bike`
+- **Auth**: Admin JWT required
+- **Request Body**:
 
 ```json
 {
   "stationId": "string",
+  "modelName": "string",
+  "brand": "string",
+  "maxSpeed": 25,
+  "rangeKm": 50,
+  "weightKg": 20,
+  "imageUrl": "string",
+  "description": "string",
+  "batteryLevel": 100
+}
+```
+
+#### Update Bike
+
+- **Method**: `PUT`
+- **Path**: `/bike-service/update-bike/{bikeId}`
+- **Auth**: Admin JWT required
+- **Request Body**: Partial bike update object
+
+#### Delete Bike
+
+- **Method**: `DELETE`
+- **Path**: `/bike-service/delete-bike/{bikeId}`
+- **Auth**: Admin JWT required
+
+#### Soft Delete Bike
+
+- **Method**: `PUT`
+- **Path**: `/bike-service/soft-delete-bike/{bikeId}`
+- **Auth**: Admin JWT required
+
+#### Restore Bike
+
+- **Method**: `PUT`
+- **Path**: `/bike-service/restore-bike/{bikeId}`
+- **Auth**: Admin JWT required
+
+#### Get Active Bikes
+
+- **Method**: `GET`
+- **Path**: `/bike-service/active-bikes?pageSize=50&pageOffset=0`
+- **Auth**: None
+- **Query Parameters**:
+  - `pageSize` (optional): Number of bikes per page (default: 50)
+  - `pageOffset` (optional): Page offset for pagination (default: 0)
+
+#### Reserve Bike
+
+- **Method**: `PUT`
+- **Path**: `/bike-service/reserve-bike/{bikeId}`
+- **Auth**: User JWT required
+
+#### Release Bike
+
+- **Method**: `PUT`
+- **Path**: `/bike-service/release-bike/{bikeId}?endLocation={location}`
+- **Auth**: User JWT required
+- **Query Parameters**:
+  - `endLocation`: Location where bike is returned
+
+#### Get Unreserved Bikes
+
+- **Method**: `GET`
+- **Path**: `/bike-service/unreserved-bikes?pageSize=50&pageOffset=0`
+- **Auth**: None
+
+#### Update Bike Station
+
+- **Method**: `PUT`
+- **Path**: `/bike-service/update-bike-station/{bikeId}?stationId={stationId}`
+- **Auth**: User JWT required
+
+### Station Management
+
+#### Add Station
+
+- **Method**: `POST`
+- **Path**: `/bike-service/add-station`
+- **Auth**: Admin JWT required
+- **Request Body**:
+
+```json
+{
   "name": "string",
   "address": "string",
   "description": "string",
@@ -694,143 +187,73 @@ Update the station location of a bike.
   "phone": "string",
   "latitude": "string",
   "longitude": "string",
-  "operatingHours": "string",
-  "createdAt": "string (ISO 8601 datetime)",
-  "updatedAt": "string (ISO 8601 datetime)"
+  "operatingHours": "string"
 }
 ```
 
-## Usage Examples
+#### Get All Stations
 
-### JavaScript/Fetch API
+- **Method**: `GET`
+- **Path**: `/bike-service/stations`
+- **Auth**: None
+- **Response**:
 
-```javascript
-// Get all bikes
-const response = await fetch('http://localhost:8090/bike-service/bikes', {
-  headers: {
-    Authorization: 'Bearer YOUR_JWT_TOKEN',
-  },
-});
-const data = await response.json();
-
-// Create a new bike
-const newBike = {
-  modelName: 'City Cruiser',
-  brand: 'EcoBike',
-  maxSpeed: 25,
-  rangeKm: 50,
-  weightKg: 20,
-  batteryLevel: 100,
-  stationId: 'station-001',
-};
-
-const createResponse = await fetch(
-  'http://localhost:8090/bike-service/create-bike',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer YOUR_JWT_TOKEN',
-    },
-    body: JSON.stringify(newBike),
-  }
-);
-const createData = await createResponse.json();
-
-// Reserve a bike
-const reserveResponse = await fetch(
-  'http://localhost:8090/bike-service/reserve-bike/123e4567-e89b-12d3-a456-426614174000',
-  {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer YOUR_JWT_TOKEN',
-    },
-  }
-);
-const reserveData = await reserveResponse.json();
-
-// Add a new station
-const newStation = {
-  name: 'Central Park Station',
-  address: 'Central Park, New York, NY',
-  description: 'Main station in Central Park area',
-  imageUrl: 'https://example.com/station.jpg',
-  phone: '+1-555-0123',
-  latitude: '40.7829',
-  longitude: '-73.9654',
-  operatingHours: '06:00 - 22:00',
-};
-
-const stationResponse = await fetch(
-  'http://localhost:8090/bike-service/add-station',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer YOUR_JWT_TOKEN',
-    },
-    body: JSON.stringify(newStation),
-  }
-);
-const stationData = await stationResponse.json();
+```json
+{
+  "statusCode": 200,
+  "message": "Stations retrieved successfully",
+  "data": [
+    {
+      "stationId": "string",
+      "name": "string",
+      "address": "string",
+      "latitude": "string",
+      "longitude": "string",
+      "operatingHours": "string"
+    }
+  ]
+}
 ```
 
-### cURL Examples
+#### Get Nearby Stations
 
-```bash
-# Get all bikes
-curl -X GET "http://localhost:8090/bike-service/bikes" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+- **Method**: `GET`
+- **Path**: `/bike-service/nearby-stations?latitude={lat}&longitude={lng}&radius={radius}`
+- **Auth**: None
+- **Query Parameters**:
+  - `latitude`: Latitude coordinate
+  - `longitude`: Longitude coordinate
+  - `radius`: Search radius in meters
 
-# Create a new bike
-curl -X POST "http://localhost:8090/bike-service/create-bike" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "modelName": "City Cruiser",
-    "brand": "EcoBike",
-    "maxSpeed": 25,
-    "rangeKm": 50,
-    "weightKg": 20,
-    "batteryLevel": 100,
-    "stationId": "station-001"
-  }'
+#### Get Bikes by Station
 
-# Reserve a bike
-curl -X PUT "http://localhost:8090/bike-service/reserve-bike/123e4567-e89b-12d3-a456-426614174000" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+- **Method**: `GET`
+- **Path**: `/bike-service/bikes-by-station/{stationId}?pageSize=50&pageOffset=0`
+- **Auth**: None
 
-# Add a new station
-curl -X POST "http://localhost:8090/bike-service/add-station" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "name": "Central Park Station",
-    "address": "Central Park, New York, NY",
-    "description": "Main station in Central Park area",
-    "imageUrl": "https://example.com/station.jpg",
-    "phone": "+1-555-0123",
-    "latitude": "40.7829",
-    "longitude": "-73.9654",
-    "operatingHours": "06:00 - 22:00"
-  }'
-```
+## Event Processing
 
-## Notes for Frontend Developers
+The service integrates with Apache Kafka for processing ride events:
 
-1. **Authentication**: All endpoints require a valid JWT token. Make sure to include it in the Authorization header.
+- **Topic**: `ride-events`
+- **Event Types**: `RIDE_STARTED`, `RIDE_ENDED`
+- **Consumer Group**: `ride-events`
 
-2. **Error Handling**: Always check the `statusCode` field in responses to handle errors appropriately.
+Events are automatically processed to update bike statuses and locations in real-time.
 
-3. **Pagination**: For endpoints that support pagination, use `pageSize` and `pageOffset` query parameters to implement pagination in your UI.
+## Authentication
 
-4. **UUIDs**: All bike and station IDs are UUIDs. Make sure your frontend can handle UUID strings properly.
+The API uses JWT-based authentication with two roles:
 
-5. **Date Handling**: All timestamps are in ISO 8601 format. Use appropriate date parsing libraries in your frontend framework.
+- **admin**: Full access to bike and station management
+- **user**: Access to bike reservations and basic operations
 
-6. **Optional Fields**: When creating or updating bikes, some fields are optional. Check the documentation for each endpoint to see which fields are required.
+JWT tokens must include:
 
-7. **Business Logic**:
-   - Bikes cannot be reserved if they are inactive or already reserved
-   - Soft-deleted bikes can be restored
-   - Hard-deleted bikes are permanently removed from the system
+- `issuer`: "Orbyte"
+- `audience`: "vEwzbcasJVQm1jVYHUHCjhxZ4tYa"
+- `scp` (scope): "admin" or "user"
+
+## License
+
+This project does not specify a license. Please contact the repository owners for licensing information.
