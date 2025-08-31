@@ -1,11 +1,9 @@
 # Bike Service
 
-A comprehensive bike-sharing service built with Ballerina that provides bike and station management functionality with real-time event processing capabilities. This service enables users to discover, reserve, and manage electric bikes across multiple stations while providing administrative controls for fleet management.
-
-## Build & Deployment Status
-
 [![CI](https://github.com/Team-OrByte/bike-service/actions/workflows/automation.yaml/badge.svg)](https://github.com/Team-OrByte/bike-service/actions/workflows/automation.yaml)
 [![Docker Image](https://img.shields.io/badge/docker-thetharz%2Forbyte__bike__service-blue)](https://hub.docker.com/r/thetharz/orbyte_bike_service)
+
+A comprehensive bike-sharing service built with Ballerina that provides bike and station management functionality with real-time event processing capabilities. This service enables users to discover, reserve, and manage electric bikes across multiple stations while providing administrative controls for fleet management.
 
 ## How Ballerina is Used
 
